@@ -1,14 +1,14 @@
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
 experiment:
-    model_name: pointnet2_charlesmsg
+    model_name: pointnet2ms
     checkpoint_dir: ""
-    resume: False
+    resume: True
     task: segmentation
     dataset: ahn_aerial
 
 # parameters for Weights and Biases
 wandb:
-    project: shapenet-pn2
+    project: ahn-pn2
     log: False
 
 # parameters for TensorBoard Visualization
@@ -18,8 +18,8 @@ tensorboard:
 # Those arguments defines the training hyper-parameters
 training:
     shuffle: True
-    num_workers: 8
-    batch_size: 2
+    num_workers: 4
+    batch_size: 1
     cuda: 1
     precompute_multi_scale: False # Compute multiscate features on cpu for faster training / inference
     epochs: 100
@@ -80,7 +80,7 @@ data:
         name: ahn_aerial
         dataroot: data
         patch_opt:
-            patch_diam: 30
+            patch_diam: 20
             context_dist: 1
 
 defaults:

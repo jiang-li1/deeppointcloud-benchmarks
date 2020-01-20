@@ -269,9 +269,9 @@ class AHNPointCloud(PointCloud):
 
     def to_torch_data(self) -> Data:
         return Data(
-            pos = torch.tensor(self.pos), 
-            x = torch.tensor(np.concatenate((self.intensity, self.num_returns, self.return_ordinal), axis=1)),
-            y = torch.tensor(self.clas),
+            pos = torch.tensor(self.pos, dtype=torch.float32), 
+            x = torch.tensor(np.concatenate((self.intensity, self.num_returns, self.return_ordinal), axis=1), dtype=torch.float32),
+            y = torch.tensor(self.clas, dtype=torch.long).squeeze(),
         )
 
     def log_clip_intensity(self):

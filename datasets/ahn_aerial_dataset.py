@@ -11,6 +11,7 @@ sys.path.append(ROOT)
 from custom_dataset.pcd_utils import AHNPointCloud
 from datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
 from datasets.base_dataset import BaseDataset
+from metrics.segmentation_tracker import SegmentationTracker
 
 class AHNTilesDataset(InMemoryDataset):
 
@@ -97,6 +98,19 @@ class AHNAerialDataset(BaseDataset):
         return {
             k: [v] for k, v in AHNPointCloud.clasNameToNum.items()
         }
+
+    @staticmethod
+    def get_tracker(model, task: str, dataset, wandb_opt: bool, tensorboard_opt: bool):
+        """Factory method for the tracker
+
+        Arguments:
+            task {str} -- task description
+            dataset {[type]}
+            wandb_log - Log using weight and biases
+        Returns:
+            [BaseTracker] -- tracker
+        """
+        return SegmentationTracker(dataset, wandb_log=wandb_opt.log, use_tensorboard=tensorboard_opt.log)
 
 
 

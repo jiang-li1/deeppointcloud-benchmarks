@@ -182,9 +182,9 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
         inner_idx = self._get_inner_block_index_into_block(index)
 
         d = Data(
-            pos = self.pos[block_idx], 
-            x = self.features[block_idx],
-            y = self.data.y[block_idx],
+            pos = self.pos[block_idx].to(torch.float), 
+            x = self.features[block_idx].to(torch.float),
+            y = self.data.y[block_idx].to(torch.long),
             inner_idx = inner_idx,
         )
         return d
