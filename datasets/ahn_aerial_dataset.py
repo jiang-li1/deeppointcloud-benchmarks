@@ -10,8 +10,8 @@ ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 sys.path.append(ROOT)
 
 from custom_dataset.pcd_utils import AHNPointCloud
-from base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
-from base_dataset import BaseDataset
+from datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
+from datasets.base_dataset import BaseDataset
 
 class AHNTilesDataset(InMemoryDataset):
 
@@ -62,28 +62,30 @@ class AHNTilesDataset(InMemoryDataset):
 
 class AHNPatchDataset(Grid2DPatchDataset):
 
-    def __init__(self, data):
-        super().__init__(data, 10, 10, 0.3)
+    def __init__(self, data, patch_diam=10, context_dist=0.3):
+        super().__init__(data, patch_diam, patch_diam, context_dist)
 
 class AHNMultiCloudPatchDataset(BaseMultiCloudPatchDataset):
 
-    def __init__(self, backingDataset):
+    def __init__(self, backingDataset, patch_opt):
         super().__init__([
-            AHNPatchDataset(data) for data in backingDataset
+            AHNPatchDataset(data, **patch_opt) for data in backingDataset
         ])
 
 class AHNAerialDataset(BaseDataset):
 
     def __init__(self, dataset_opt, training_opt):
         super().__init__(dataset_opt, training_opt)
-        self._data_path = osp.join(dataset_opt.dataroot, "AHNTilesDataset")
+        self._data_path = osp.join(ROOT, dataset_opt.dataroot, "AHNTilesDataset")
 
         self.train_dataset = AHNMultiCloudPatchDataset(
             AHNTilesDataset(self._data_path, "train"),
+            dataset_opt.patch_opt,
         )
 
         self.test_dataset = AHNMultiCloudPatchDataset(
             AHNTilesDataset(self._data_path, "test"),
+            dataset_opt.patch_opt,
         )
 
 

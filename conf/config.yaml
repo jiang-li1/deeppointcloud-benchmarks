@@ -4,7 +4,7 @@ experiment:
     checkpoint_dir: "/home/nicolas/deeppointcloud-benchmarks/outputs/2020-01-14/22-56-10"
     resume: True
     task: segmentation
-    dataset: pcpnet_shape
+    dataset: ahn_aerial
 
 # parameters for Weights and Biases
 wandb:
@@ -32,6 +32,7 @@ training:
         lr_clip: 1e-5
     weight_name: "miou" # Used during resume, select with model to load from [miou, macc, acc..., latest]
     enable_cudnn: True
+    use_torch_loader: False
 
 # Those arguments defines the available datasets
 data:
@@ -74,6 +75,13 @@ data:
         dataroot: data
         train_category: NoNoise
         test_category: NoNoise
+
+    ahn_aerial:
+        name: ahn_aerial
+        dataroot: data
+        patch_opt:
+            patch_diam: 30
+            context_dist: 1
 
 defaults:
     - models: segmentation

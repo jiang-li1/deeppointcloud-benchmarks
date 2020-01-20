@@ -7,10 +7,22 @@ import open3d as o3d
 import torch
 from torch_geometric.data import InMemoryDataset, Data, Dataset
 
-from base_dataset import BaseDataset
+from datasets.base_dataset import BaseDataset
 # from utils.pointcloud_utils import build_kdtree
 
-class BasePointCloudPatchDataset(ABC, torch.utils.data.Dataset):
+class BasePointCloud(ABC):
+
+    @property
+    @abstractmethod
+    def pos(self) -> torch.tensor:
+        pass
+
+    @property
+    @abstractmethod
+    def features(self) -> torch.tensor:
+        pass
+
+class BasePointCloudPatchDataset(torch.utils.data.Dataset, BasePointCloud, ABC):
     '''ABC for classes which generate patches from a single pointcloud
 
     PointCloudPatchDatasets should be backed by a torch_geometric.data.Data object 
@@ -30,6 +42,10 @@ class BasePointCloudPatchDataset(ABC, torch.utils.data.Dataset):
     @property
     def pos(self) -> torch.tensor:
         return self.data.pos
+
+    @property
+    def features(self) -> torch.tensor:
+        return self.data.x
 
     def get_bounding_box(self):
         minPoint = self.pos.min(dim=0)
@@ -157,17 +173,29 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
 
         # return index
 
-        yIndex, xIndex = divmod(idx, self.numBlocksX)
-
-        blockMinY = yIndex * self.strideYDist
-        blockMinX = xIndex * self.strideXDist
-
-        blockMaxY = blockMinY + self.strideYDist
-        blockMaxX = blockMinX + self.strideXDist
-
-        index = self.get_box_index((blockMinX, blockMinY), (blockMaxX, blockMaxY))
+        index = self.get_box_index(*self._get_bounds_for_idx(idx))
 
         return index
+
+    def _get_bounds_for_idx(self, idx):
+        yIndex, xIndex = divmod(idx, self.numBlocksX)
+
+        blockMinY = self.minPoint[1] + yIndex * self.strideYDist
+        blockMinX = self.minPoint[0] + xIndex * self.strideXDist
+
+        blockMaxY = torch.min(
+            blockMinY + self.blockYDist,
+            self.maxPoint[1]
+        )
+        blockMaxX = torch.min(
+            blockMinX + self.blockXDist,
+            self.maxPoint[0]
+        )
+
+        xyMin = (blockMinX, blockMinY)
+        xyMax = (blockMaxX, blockMaxY)
+
+        return xyMin, xyMax
 
         
 
