@@ -10,17 +10,45 @@ from torch_geometric.data import InMemoryDataset, Data, Dataset
 from datasets.base_dataset import BaseDataset
 # from utils.pointcloud_utils import build_kdtree
 
-class BasePointCloud(ABC):
+class BasePointCloud():
+
+    def __init__(self, pos, features=None):
+        self._pos = pos
+        self._features = features if features is not None else torch.tensor()
+        self._minPoint = None
+        self._maxPoint = None
+
+        assert self._pos is not None
 
     @property
-    @abstractmethod
     def pos(self) -> torch.tensor:
-        pass
+        return self._pos
 
     @property
-    @abstractmethod
     def features(self) -> torch.tensor:
-        pass
+        return self._features
+
+    @property
+    def minPoint(self) -> torch.tensor:
+        if self._minPoint is None:
+            self.get_bounding_box()
+        return self._minPoint
+
+    @property
+    def maxPoint(self) -> torch.tensor:
+        if self._maxPoint is None:
+            self.get_bounding_box()
+        return self._maxPoint
+
+    def get_bounding_box(self):
+        minPoint = self.pos.min(dim=0)
+        maxPoint = self.pos.max(dim=0)
+
+        self._minPoint = minPoint.values
+        self._maxPoint = maxPoint.values
+
+        return self._minPoint, self._maxPoint
+
 
 class BasePointCloudPatchDataset(torch.utils.data.Dataset, BasePointCloud, ABC):
     '''ABC for classes which generate patches from a single pointcloud
@@ -31,27 +59,13 @@ class BasePointCloudPatchDataset(torch.utils.data.Dataset, BasePointCloud, ABC):
     '''
 
     def __init__(self, data : Data):
+        super().__init__(data.pos, data.x)
         self._data = data
-
-        assert data.pos is not None
 
     @property
     def data(self) -> Data:
         return self._data
 
-    @property
-    def pos(self) -> torch.tensor:
-        return self.data.pos
-
-    @property
-    def features(self) -> torch.tensor:
-        return self.data.x
-
-    def get_bounding_box(self):
-        minPoint = self.pos.min(dim=0)
-        maxPoint = self.pos.max(dim=0)
-
-        return minPoint.values, maxPoint.values
 
 class BaseMultiCloudPatchDataset(ABC, Dataset):
     '''Class representing datasets over multiple patchable pointclouds. 
@@ -153,8 +167,6 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
         self.strideXDist = blockX - contextDist
         self.strideYDist = blockY - contextDist
 
-        self.minPoint, self.maxPoint = self.get_bounding_box()
-
         cloudSizeX, cloudSizeY, _ = self.maxPoint - self.minPoint
 
         #number of blocks in the x dimension (grid columns)
@@ -195,6 +207,9 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
             blockMinX + self.blockXDist,
             self.maxPoint[0]
         )
+
+        blockMinY = blockMaxY - self.blockYDist
+        blockMinX = blockMaxX - self.blockXDist
 
         xyMin = (blockMinX, blockMinY)
         xyMax = (blockMaxX, blockMaxY)

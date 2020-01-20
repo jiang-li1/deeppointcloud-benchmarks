@@ -9,7 +9,7 @@ sys.path.append(ROOT)
 import open3d as o3d
 import numpy as np
 
-from pcd_utils import visualize_pointcloud, pointcloud_to_o3d_pcd, rect_to_o3d_lineset
+from pcd_utils import *
 from datasets.utils import find_dataset_using_name
 from datasets.base_patch_dataset import Grid2DPatchDataset
 
@@ -25,7 +25,24 @@ def main(cfg):
     # visualize_pointcloud(dataset.train_dataset._cloud_dataset[0])
 
     patchDataset = dataset.train_dataset.patch_datasets[0]
-    visualize_2d_grid_dataset(patchDataset)
+    # visualize_2d_grid_dataset(patchDataset)
+    visualize_all_patch_linesets(patchDataset)
+
+def visualize_all_patch_linesets(dataset: Grid2DPatchDataset):
+
+    linesets = []
+
+    for i in range(len(dataset)):
+        lineset = rect_to_o3d_lineset(
+            *dataset._get_bounds_for_idx(i),
+            dataset.minPoint[2],
+            dataset.maxPoint[2],
+            colour=np.random.rand(3),
+        )
+        linesets.append(lineset)
+
+    pcd = pointcloud_to_z_grey_o3d_pcd(dataset)
+    o3d.visualization.draw_geometries(linesets + [pcd])
 
 def visualize_2d_grid_dataset(dataset: Grid2DPatchDataset):
 
