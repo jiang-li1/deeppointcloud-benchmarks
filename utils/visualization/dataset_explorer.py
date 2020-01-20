@@ -32,7 +32,7 @@ def visualize_2d_grid_dataset(dataset: Grid2DPatchDataset):
     pcd = pointcloud_to_o3d_pcd(dataset)
 
     global tileIdx
-    tileIdx = dataset.get(0).detach().numpy()
+    tileIdx = dataset._get_block_index_arr(0).detach().numpy()
 
     pcd.paint_uniform_color([0.5]*3)
 
@@ -83,7 +83,7 @@ def visualize_2d_grid_dataset(dataset: Grid2DPatchDataset):
         global tileIdx, i
         np.asarray(pcd.colors)[tileIdx] = colours[tileIdx]
         
-        tileIdx = dataset.get(i).detach().numpy()
+        tileIdx = dataset._get_block_index_arr(i).detach().numpy()
         tilePts = dataset.pos[tileIdx,2].detach().numpy()
         minZ = dataset.pos[tileIdx].min(dim=0).values[2].item()
         maxZ = dataset.pos[tileIdx].max(dim=0).values[2].item()
@@ -91,15 +91,32 @@ def visualize_2d_grid_dataset(dataset: Grid2DPatchDataset):
         tileColours = np.concatenate(
             (
                 np.expand_dims(zScale, 1),
-                np.zeros((zScale.shape[0], 1)), 
+                np.expand_dims(zScale, 1),
                 np.zeros((zScale.shape[0], 1))
             ),
             axis=1
         )
+
+        innerIdx = dataset._get_inner_block_index_arr(i).detach().numpy()
+        # tileColours[innerIdx,1] = tileColours[innerIdx,0]
+        # tileColours[innerIdx,0] = 0
+
         np.asarray(pcd.colors)[tileIdx] = tileColours
+        np.asarray(pcd.colors)[innerIdx,1] = 0
+
+
+
+        newlineset = rect_to_o3d_lineset(
+            *dataset._get_bounds_for_idx(i), 
+            minZ,
+            maxZ,
+        )
+
+        np.asarray(lineset.points)[:] = np.asarray(newlineset.points)
 
         i += 1
         vis.update_geometry(pcd)
+        vis.update_geometry(lineset)
 
     o3d.visualization.draw_geometries_with_key_callbacks(
         [pcd, lineset], 

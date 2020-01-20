@@ -166,16 +166,20 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
     def __len__(self):
         return self.numBlocksX * self.numBlocksY
 
-    def get(self, idx):
+    def _get_block_index_arr(self, idx):
         # xyMin = self.minPoint
         # xyMax = self.minPoint + torch.tensor([self.strideX, self.strideY, 0]).to(self.minPoint.dtype)
         # index = self.get_box_index(xyMin, xyMax)
 
         # return index
 
-        index = self.get_box_index(*self._get_bounds_for_idx(idx))
+        index = self._get_box_index_arr(*self._get_bounds_for_idx(idx))
 
         return index
+
+    def _get_inner_block_index_arr(self, idx):
+
+        return self._get_box_index_arr(*self._get_inner_bounds_for_idx(idx))
 
     def _get_bounds_for_idx(self, idx):
         yIndex, xIndex = divmod(idx, self.numBlocksX)
@@ -197,9 +201,16 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
 
         return xyMin, xyMax
 
+    def _get_inner_bounds_for_idx(self, idx):
+        xyMin, xyMax = self._get_bounds_for_idx(idx)
+        return (
+            (xyMin[0] + self.contextDist, xyMin[1] + self.contextDist), 
+            (xyMax[0] - self.contextDist, xyMax[1] - self.contextDist)
+        )
+
         
 
-    def get_box_index(self, xyMin, xyMax):
+    def _get_box_index_arr(self, xyMin, xyMax):
         
         c1 = self.pos[:, 0] >= xyMin[0]
         c2 = self.pos[:, 0] <= xyMax[0]
