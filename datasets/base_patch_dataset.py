@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 import math
 
-import open3d as o3d
 import torch
 from torch_geometric.data import InMemoryDataset, Data, Dataset
 
@@ -178,20 +177,30 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
     def __len__(self):
         return self.numBlocksX * self.numBlocksY
 
+    def __getitem__(self, index):
+        block_idx = self._get_block_index_arr(index)
+        inner_idx = self._get_inner_block_index_into_block(index)
+
+        d = Data(
+            pos = self.pos[block_idx], 
+            x = self.features[block_idx],
+            y = self.data.y[block_idx],
+            inner_idx = inner_idx,
+        )
+        return d
+
     def _get_block_index_arr(self, idx):
-        # xyMin = self.minPoint
-        # xyMax = self.minPoint + torch.tensor([self.strideX, self.strideY, 0]).to(self.minPoint.dtype)
-        # index = self.get_box_index(xyMin, xyMax)
-
-        # return index
-
-        index = self._get_box_index_arr(*self._get_bounds_for_idx(idx))
-
-        return index
+        return self._get_box_index_arr(*self._get_bounds_for_idx(idx))
 
     def _get_inner_block_index_arr(self, idx):
-
         return self._get_box_index_arr(*self._get_inner_bounds_for_idx(idx))
+
+    def _get_inner_block_index_into_block(self, idx):
+        block_index = self._get_block_index_arr(idx)
+        return self._get_box_index_arr(
+            *self._get_inner_bounds_for_idx(idx),
+            pts=self.pos[block_index]
+        )
 
     def _get_bounds_for_idx(self, idx):
         yIndex, xIndex = divmod(idx, self.numBlocksX)
@@ -223,19 +232,21 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
             (xyMax[0] - self.contextDist, xyMax[1] - self.contextDist)
         )
 
-        
+    def _get_box_index_arr(self, xyMin, xyMax, pts=None):
 
-    def _get_box_index_arr(self, xyMin, xyMax):
+        if pts is None:
+            pts = self.pos
         
-        c1 = self.pos[:, 0] >= xyMin[0]
-        c2 = self.pos[:, 0] <= xyMax[0]
+        c1 = pts[:, 0] >= xyMin[0]
+        c2 = pts[:, 0] <= xyMax[0]
 
-        c3 = self.pos[:, 1] >= xyMin[1]
-        c4 = self.pos[:, 1] <= xyMax[1]
+        c3 = pts[:, 1] >= xyMin[1]
+        c4 = pts[:, 1] <= xyMax[1]
 
         mask = c1 & c2 & c3 & c4
 
-        return torch.arange(self.pos.shape[0])[mask]
+        return torch.arange(pts.shape[0])[mask]
+
 
 
 

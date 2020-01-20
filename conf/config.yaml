@@ -1,8 +1,8 @@
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
 experiment:
     model_name: pointnet2_charlesmsg
-    checkpoint_dir: "/home/nicolas/deeppointcloud-benchmarks/outputs/2020-01-14/22-56-10"
-    resume: True
+    checkpoint_dir: "/home/tristan/deeppointcloud-benchmarks/outputs/"
+    resume: False
     task: segmentation
     dataset: ahn_aerial
 

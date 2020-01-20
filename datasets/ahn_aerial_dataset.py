@@ -2,7 +2,6 @@ import os
 import os.path as osp
 import sys
 
-import open3d
 import torch
 from torch_geometric.data import InMemoryDataset
 
@@ -72,6 +71,9 @@ class AHNMultiCloudPatchDataset(BaseMultiCloudPatchDataset):
             AHNPatchDataset(data, **patch_opt) for data in backingDataset
         ])
 
+        self.num_classes = 5
+
+
 class AHNAerialDataset(BaseDataset):
 
     def __init__(self, dataset_opt, training_opt):
@@ -87,6 +89,14 @@ class AHNAerialDataset(BaseDataset):
             AHNTilesDataset(self._data_path, "test"),
             dataset_opt.patch_opt,
         )
+
+        self._create_dataloaders(self.train_dataset, self.test_dataset, validation=None)
+
+    @property
+    def class_to_segments(self):
+        return {
+            k: [v] for k, v in AHNPointCloud.clasNameToNum.items()
+        }
 
 
 
