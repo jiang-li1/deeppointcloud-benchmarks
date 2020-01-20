@@ -8,7 +8,6 @@ import torch.nn.functional as F
 import hydra
 from tqdm import tqdm as tq
 import time
-import wandb
 from omegaconf import OmegaConf
 import logging
 
@@ -16,8 +15,9 @@ from models.utils import find_model_using_name
 from models.model_building_utils.model_definition_resolver import resolve_model
 from models.base_model import BaseModel
 from datasets.base_dataset import BaseDataset
-from metrics.base_tracker import get_tracker, BaseTracker
-from metrics.colored_tqdm import Coloredtqdm as Ctq, COLORS
+from metrics.base_tracker import BaseTracker
+from metrics.colored_tqdm import Coloredtqdm as Ctq
+from utils_folder.colors import COLORS
 from utils_folder.utils import merges_in_sub, model_fn_decorator, set_format
 from metrics.model_checkpoint import get_model_checkpoint, ModelCheckpoint
 from datasets.utils import find_dataset_using_name
@@ -52,7 +52,7 @@ def train(epoch, model: BaseModel, dataset, device: str, tracker: BaseTracker, c
 
     metrics = tracker.publish()
     checkpoint.save_best_models_under_current_metrics(model, metrics)
-    print("Learning rate = %f" % model.learning_rate)
+    log.info("Learning rate = %f" % model.learning_rate)
 
 
 def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint, log):
@@ -78,6 +78,10 @@ def run(cfg, model, dataset: BaseDataset, device, tracker: BaseTracker, checkpoi
     for epoch in range(checkpoint.start_epoch, cfg.training.epochs):
         log.info("EPOCH %i / %i", epoch, cfg.training.epochs)
         train(epoch, model, dataset, device, tracker, checkpoint, log)
+        test(model, dataset, device, tracker, checkpoint, log)
+
+    # Single test evaluation in resume case
+    if checkpoint.start_epoch > cfg.training.epochs:
         test(model, dataset, device, tracker, checkpoint, log)
 
 
@@ -130,8 +134,9 @@ def main(cfg):
         import wandb
 
         wandb.init(project=cfg.wandb.project)
+        # wandb.watch(model)
 
-    tracker: BaseTracker = get_tracker(model, tested_task, dataset, cfg.wandb, cfg.tensorboard, "")
+    tracker: BaseTracker = dataset.get_tracker(model, tested_task, dataset, cfg.wandb, cfg.tensorboard)
 
     checkpoint = get_model_checkpoint(
         model, exp.checkpoint_dir, tested_model_name, exp.resume, cfg_training.weight_name

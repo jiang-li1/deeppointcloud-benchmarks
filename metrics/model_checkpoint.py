@@ -7,7 +7,7 @@ import torch
 import logging
 
 from models.base_model import BaseModel
-from metrics.colored_tqdm import COLORS
+from utils_folder.colors import COLORS
 from utils_folder.utils import colored_print
 from schedulers.lr_schedulers import build_basic_params
 
@@ -66,9 +66,9 @@ class Checkpoint(object):
         checkpoint located at [checkpointdir]/[checkpoint_name].pt
         """
         checkpoint_file = os.path.join(checkpoint_dir, checkpoint_name) + ".pt"
-        if not os.path.exists(checkpoint_file):
-            raise ValueError("Checkpoint %s does not exists" % checkpoint_file)
         ckp = Checkpoint(checkpoint_name)
+        if not os.path.exists(checkpoint_file):
+            return ckp
         ckp._objects = torch.load(checkpoint_file)
         ckp._filled = True
         return ckp
