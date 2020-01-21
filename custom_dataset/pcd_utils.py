@@ -186,11 +186,11 @@ class PointCloud(ABC):
 class AHNPointCloud(PointCloud):
 
     clasNumToName = {
-        1 : "vegetation",
-        2 : "ground",
-        3 : "building",
-        4 : "water",
-        5 : "infrastructure"
+        0 : "vegetation",
+        1 : "ground",
+        2 : "building",
+        3 : "water",
+        4 : "infrastructure"
     }
 
     features = ['intensity', 'num_returns', 'return_ordinal']
@@ -280,9 +280,11 @@ class AHNPointCloud(PointCloud):
         )
 
     def remap_classification(self):
-        self.clas[self.clas == 6] = 3
-        self.clas[self.clas == 9] = 4
-        self.clas[self.clas == 26] = 5
+        self.clas[self.clas == 1] = 0
+        self.clas[self.clas == 2] = 1
+        self.clas[self.clas == 6] = 2
+        self.clas[self.clas == 9] = 3
+        self.clas[self.clas == 26] = 4
 
     def get_points_in_clas(self, clasName):
         index = self.clas == self.clasNameToNum[clasName]
