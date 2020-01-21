@@ -99,16 +99,16 @@ class AHNAerialDataset(BaseDataset):
             train_sampler=RandomSampler(
                 self.train_dataset, 
                 replacement=True,
-                num_samples=300
+                num_samples=100
             ),
             test_sampler=RandomSampler(
                 self.test_dataset,
                 replacement=True,
-                num_samples=100
+                num_samples=50
             )
         )
 
-        self.pointcloud_scale = 10
+        self.pointcloud_scale = 5
 
     @property
     def class_to_segments(self):

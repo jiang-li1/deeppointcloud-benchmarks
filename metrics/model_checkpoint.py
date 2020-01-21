@@ -60,7 +60,7 @@ class Checkpoint(object):
         self._objects["stats"][stage].append(current_stat)
         self._objects["optimizer"] = optimizer
         self._objects["lr_params"] = lr_params
-        torch.save(self._objects, self._check_path)
+        torch.save(self._objects, self._checkpoint_file)
 
     @staticmethod
     def load(checkpoint_dir: str, checkpoint_name: str):
@@ -69,6 +69,7 @@ class Checkpoint(object):
         """
         checkpoint_file = os.path.join(ROOT, checkpoint_dir, checkpoint_name) + ".pt"
         ckp = Checkpoint(checkpoint_name)
+        ckp._checkpoint_file = checkpoint_file
         if not os.path.exists(checkpoint_file):
             return ckp
         ckp._objects = torch.load(checkpoint_file)
