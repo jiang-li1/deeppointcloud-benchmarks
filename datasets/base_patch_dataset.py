@@ -190,7 +190,7 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
         pos[:,2] -= pos.min(dim=0).values[2]
 
         d = Data(
-            pos = self.pos[block_idx].to(torch.float), 
+            pos = pos, 
             x = self.features[block_idx].to(torch.float),
             y = self.data.y[block_idx].to(torch.long),
             inner_idx = inner_idx,

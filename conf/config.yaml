@@ -1,7 +1,7 @@
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
 experiment:
     model_name: pointnet2ms
-    checkpoint_dir: ""
+    checkpoint_dir: "outputs/checkpoints"
     resume: True
     task: segmentation
     dataset: ahn_aerial
@@ -19,7 +19,7 @@ tensorboard:
 training:
     shuffle: True
     num_workers: 4
-    batch_size: 1
+    batch_size: 2
     cuda: True
     precompute_multi_scale: False # Compute multiscate features on cpu for faster training / inference
     epochs: 100
@@ -30,7 +30,7 @@ training:
         lr_decay: 0.5
         decay_step: 200000
         lr_clip: 1e-5
-    weight_name: latest # Used during resume, select with model to load from [miou, macc, acc..., latest]
+    weight_name: acc # Used during resume, select with model to load from [miou, macc, acc..., latest]
     enable_cudnn: True
     use_torch_loader: False
 
@@ -80,7 +80,7 @@ data:
         name: ahn_aerial
         dataroot: data
         patch_opt:
-            patch_diam: 20
+            patch_diam: 10
             context_dist: 1
 
 defaults:

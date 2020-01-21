@@ -6,6 +6,8 @@ import sys
 import torch
 import logging
 
+ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
+
 from models.base_model import BaseModel
 from utils_folder.colors import COLORS
 from utils_folder.utils import colored_print
@@ -65,7 +67,7 @@ class Checkpoint(object):
         """ Creates a new checpoint object in the current working directory by loading the
         checkpoint located at [checkpointdir]/[checkpoint_name].pt
         """
-        checkpoint_file = os.path.join(checkpoint_dir, checkpoint_name) + ".pt"
+        checkpoint_file = os.path.join(ROOT, checkpoint_dir, checkpoint_name) + ".pt"
         ckp = Checkpoint(checkpoint_name)
         if not os.path.exists(checkpoint_file):
             return ckp

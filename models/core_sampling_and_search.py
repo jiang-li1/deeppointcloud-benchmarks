@@ -235,7 +235,13 @@ class MultiscaleRadiusNeighbourFinder(BaseMSNeighbourFinder):
     def find_neighbours(self, x, y, batch_x=None, batch_y=None, scale_idx=0):
         if scale_idx >= self.num_scales:
             raise ValueError("Scale %i is out of bounds %i" % (scale_idx, self.num_scales))
-        return radius(
+        # print(x.shape, y.shape, batch_x.shape, batch_y.shape, sep='\n')
+        # print(x, y, batch_x, batch_y, sep='\n')
+        # print('x batch_x], y batch_y]', x[batch_x], y[batch_y], sep='\n')
+        # print(batch_x.min(), batch_x.max(), batch_y.min(), batch_y.max())
+        # print(batch_x.sum(), batch_y.sum())
+        # print(self._radius[scale_idx])
+        return radius (
             x, y, self._radius[scale_idx], batch_x, batch_y, max_num_neighbors=self._max_num_neighbors[scale_idx],
         )
 
