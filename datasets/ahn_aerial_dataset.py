@@ -3,6 +3,7 @@ import os.path as osp
 import sys
 
 import torch
+from torch.utils.data import RandomSampler
 from torch_geometric.data import InMemoryDataset
 
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
@@ -91,9 +92,23 @@ class AHNAerialDataset(BaseDataset):
             dataset_opt.patch_opt,
         )
 
-        self._create_dataloaders(self.train_dataset, self.test_dataset, validation=None)
+        self._create_dataloaders(
+            self.train_dataset, 
+            self.test_dataset, 
+            validation=None,
+            train_sampler=RandomSampler(
+                self.train_dataset, 
+                replacement=True,
+                num_samples=300
+            ),
+            test_sampler=RandomSampler(
+                self.test_dataset,
+                replacement=True,
+                num_samples=100
+            )
+        )
 
-        self.pointcloud_scale = 5
+        self.pointcloud_scale = 10
 
     @property
     def class_to_segments(self):

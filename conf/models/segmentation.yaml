@@ -380,7 +380,7 @@ models:
         down_conv:
             module_name: SAModule
             ratios: [0.2, 0.25]
-            radius: [0.2, 0.4]
+            radius: [0.2 * SCALE, 0.4 * SCALE]
             down_conv_nn: [[FEAT + 3, 64, 64, 128], [128 + 3, 128, 128, 256]]
             radius_num_points: [64, 64]
         up_conv:
