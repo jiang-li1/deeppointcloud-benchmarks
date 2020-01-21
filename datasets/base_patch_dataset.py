@@ -163,8 +163,8 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
         self.blockXDist = blockX
         self.blockYDist = blockY
         self.contextDist = contextDist
-        self.strideXDist = blockX - contextDist
-        self.strideYDist = blockY - contextDist
+        self.strideXDist = blockX - 2*contextDist
+        self.strideYDist = blockY - 2*contextDist
 
         cloudSizeX, cloudSizeY, _ = self.maxPoint - self.minPoint
 
@@ -180,6 +180,14 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
     def __getitem__(self, index):
         block_idx = self._get_block_index_arr(index)
         inner_idx = self._get_inner_block_index_into_block(index)
+
+        pos = self.pos[block_idx].to(torch.float)
+
+        xyMid = self._get_block_mid_for_idx(index)
+
+        pos[:,0] -= xyMid[0]
+        pos[:,1] -= xyMid[1]
+        pos[:,2] -= pos.min(dim=0).values[2]
 
         d = Data(
             pos = self.pos[block_idx].to(torch.float), 
@@ -201,6 +209,21 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
             *self._get_inner_bounds_for_idx(idx),
             pts=self.pos[block_index]
         )
+
+    def _get_block_mid_for_idx(self, idx):
+
+        xyMin, xyMax = self._get_bounds_for_idx(idx)
+
+        xyMid = (
+            xyMin[0] + (
+                (xyMax[0] - xyMin[0]) / 2
+            ), 
+            xyMin[1] + (
+                (xyMax[1] - xyMin[1]) / 2
+            )
+        )
+
+        return xyMid
 
     def _get_bounds_for_idx(self, idx):
         yIndex, xIndex = divmod(idx, self.numBlocksX)
