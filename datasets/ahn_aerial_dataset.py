@@ -93,7 +93,7 @@ class AHNAerialDataset(BaseDataset):
 
         self._create_dataloaders(self.train_dataset, self.test_dataset, validation=None)
 
-        self.pointcloud_scale = 10
+        self.pointcloud_scale = 5
 
     @property
     def class_to_segments(self):
