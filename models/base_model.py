@@ -98,6 +98,9 @@ class BaseModel(torch.nn.Module):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         self._iterations += batch_size
         self.forward()  # first call forward to calculate intermediate results
+        if hasattr(self.input, 'inner_idx'):
+            self.output = self.output[self.input.inner_idx]
+            self.labels = self.labels[self.input.inner_idx]
         self._optimizer.zero_grad()  # clear existing gradients
         self.backward()  # calculate gradients
         self._optimizer.step()  # update parameters
