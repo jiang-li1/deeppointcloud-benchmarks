@@ -32,6 +32,7 @@ class Segmentation_MP(UnetBasedModel):
         """
         self.input = data
         self.labels = data.y
+        self.batch_idx = data.batch
 
     def forward(self) -> Any:
         """Run forward pass. This will be called by both functions <optimize_parameters> and <test>."""

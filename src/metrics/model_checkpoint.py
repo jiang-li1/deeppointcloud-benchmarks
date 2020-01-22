@@ -8,7 +8,6 @@ import logging
 
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 
-from models.base_model import BaseModel
 from src.models.base_model import BaseModel
 from src.utils.colors import COLORS, colored_print
 from src.core.schedulers.lr_schedulers import build_basic_params
