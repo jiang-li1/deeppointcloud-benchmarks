@@ -7,7 +7,7 @@ sys.path.append(ROOT)
 import numpy as np 
 import open3d as o3d
 
-from datasets.base_patch_dataset import BasePointCloud
+from src.datasets.base_patch_dataset import BasePointCloud
 
 def pointcloud_to_o3d_pcd(cloud : BasePointCloud):
     pcd = o3d.geometry.PointCloud()

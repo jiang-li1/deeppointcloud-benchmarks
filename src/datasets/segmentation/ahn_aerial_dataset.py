@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import RandomSampler
 from torch_geometric.data import InMemoryDataset
 
-ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
+ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
 sys.path.append(ROOT)
 
 from custom_dataset.pcd_utils import AHNPointCloud
