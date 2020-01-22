@@ -1,6 +1,6 @@
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
 experiment:
-    model_name: SimpleKPConv
+    model_name: pointnet2_original
     checkpoint_dir: outputs/checkpoints
     resume: True
     task: segmentation
