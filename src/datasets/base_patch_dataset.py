@@ -65,8 +65,12 @@ class BasePointCloudPatchDataset(torch.utils.data.Dataset, BasePointCloud, ABC):
     def data(self) -> Data:
         return self._data
 
+    @property
+    def num_features(self):
+        return self.data.x.shape[1]
 
-class BaseMultiCloudPatchDataset(ABC, Dataset):
+
+class BaseMultiCloudPatchDataset(ABC, torch.utils.data.Dataset):
     '''Class representing datasets over multiple patchable pointclouds. 
 
     This class basically forwards methods to the underlying list of patch datasets
@@ -78,6 +82,10 @@ class BaseMultiCloudPatchDataset(ABC, Dataset):
     @property
     def patch_datasets(self) -> List[BasePointCloudPatchDataset]:
         return self._patchDataset
+
+    @property
+    def num_features(self):
+        return self.patch_datasets[0].num_features
 
     def __len__(self):
         return sum(len(pd) for pd in self.patch_datasets)
@@ -197,7 +205,7 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
             y = self.data.y[block_idx].to(torch.long).contiguous(),
             inner_idx = inner_idx.contiguous(),
         )
-        
+
         if self.eval_mode:
             d.global_index = block_idx
 

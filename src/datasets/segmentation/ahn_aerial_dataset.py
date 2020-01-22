@@ -72,11 +72,18 @@ class AHNPatchDataset(Grid2DPatchDataset):
     def __init__(self, data, patch_diam=10, context_dist=0.3, *args, **kwargs):
         super().__init__(data, patch_diam, patch_diam, context_dist, *args, **kwargs)
 
+        self.num_classes = 5
+
+    @classmethod
+    def from_tiles_dataset(cls, dataset: AHNTilesDataset, **kwargs):
+        assert len(dataset) == 1
+        return cls(dataset[0], **kwargs)
+
 class AHNMultiCloudPatchDataset(BaseMultiCloudPatchDataset):
 
-    def __init__(self, backingDataset, patch_opt, eval_mode=False):
+    def __init__(self, backingDataset, patch_opt):
         super().__init__([
-            AHNPatchDataset(data, **patch_opt, eval_mode=eval_mode) for data in backingDataset
+            AHNPatchDataset(data, **patch_opt) for data in backingDataset
         ])
 
         self.num_classes = 5
@@ -121,9 +128,10 @@ class AHNAerialDataset(BaseDataset):
 
     def _init_for_eval(self, dataset_opt, training_opt):
 
-        self.test_dataset = AHNMultiCloudPatchDataset(
+        self.test_dataset = AHNPatchDataset.from_tiles_dataset(
             AHNTilesDataset(self._data_path, "eval"),
-            dataset_opt.patch_opt,
+            **dataset_opt.patch_opt,
+            eval_mode=True,
         )
 
         self._create_dataloaders(

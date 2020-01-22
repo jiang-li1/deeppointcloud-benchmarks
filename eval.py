@@ -34,6 +34,7 @@ def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: Mo
     model.eval()
     tracker.reset("test")
     loader = dataset.test_dataloader()
+    globalClassif = np.full(loader.dataset.data.pos.shape[0], -1)
     with Ctq(loader) as tq_test_loader:
         for data in tq_test_loader:
             data = data.to(device)
@@ -42,6 +43,8 @@ def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: Mo
                 model.forward()
 
             predClass = np.argmax(model.output.cpu().numpy(), 1)
+            globalClassif[data.global_index.cpu().numpy()] = predClass
+            import pdb; pdb.set_trace()
 
             tracker.track(model)
             tq_test_loader.set_postfix(**tracker.get_metrics(), color=COLORS.TEST_COLOR)
