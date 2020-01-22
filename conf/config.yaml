@@ -1,6 +1,6 @@
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
 experiment:
-    model_name: SimpleKPConv
+    model_name: pointnet2_original
     checkpoint_dir: outputs/checkpoints
     resume: True
     task: segmentation
@@ -80,7 +80,7 @@ data:
         name: ahn_aerial
         dataroot: data
         patch_opt:
-            patch_diam: 20
+            patch_diam: 15
             context_dist: 1
 
 defaults:
