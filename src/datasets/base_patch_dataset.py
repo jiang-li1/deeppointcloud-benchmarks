@@ -157,8 +157,10 @@ class BasePatchPointBallDataset(BasePatchDataset, ABC):
 
 class Grid2DPatchDataset(BasePointCloudPatchDataset):
 
-    def __init__(self, data: Data, blockX, blockY, contextDist):
+    def __init__(self, data: Data, blockX, blockY, contextDist, eval_mode=False):
         super().__init__(data)
+
+        self.eval_mode = eval_mode
 
         self.blockXDist = blockX
         self.blockYDist = blockY
@@ -195,6 +197,10 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
             y = self.data.y[block_idx].to(torch.long).contiguous(),
             inner_idx = inner_idx.contiguous(),
         )
+        
+        if self.eval_mode:
+            d.global_index = block_idx
+
         return d
 
     def _get_block_index_arr(self, idx):

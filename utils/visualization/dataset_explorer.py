@@ -10,8 +10,8 @@ import open3d as o3d
 import numpy as np
 
 from pcd_utils import *
-from datasets.utils import find_dataset_using_name
-from datasets.base_patch_dataset import Grid2DPatchDataset
+from src import find_dataset_using_name
+from src.datasets.base_patch_dataset import Grid2DPatchDataset
 
 
 @hydra.main(config_path = osp.join(ROOT, 'conf', 'config.yaml'))
@@ -20,13 +20,13 @@ def main(cfg):
     dataset_name = cfg.experiment.dataset
     dataset_config = cfg.data[dataset_name]
 
-    dataset = find_dataset_using_name(dataset_name)(dataset_config, cfg.training)
+    dataset = find_dataset_using_name(dataset_name, cfg.experiment.task)(dataset_config, cfg.training)
 
     # visualize_pointcloud(dataset.train_dataset._cloud_dataset[0])
 
     patchDataset = dataset.train_dataset.patch_datasets[0]
-    # visualize_2d_grid_dataset(patchDataset)
-    visualize_all_patch_linesets(patchDataset)
+    visualize_2d_grid_dataset(patchDataset)
+    # visualize_all_patch_linesets(patchDataset)
 
 def visualize_all_patch_linesets(dataset: Grid2DPatchDataset):
 
