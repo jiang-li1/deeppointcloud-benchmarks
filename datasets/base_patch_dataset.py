@@ -181,7 +181,7 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
         block_idx = self._get_block_index_arr(index)
         inner_idx = self._get_inner_block_index_into_block(index)
 
-        pos = self.pos[block_idx].to(torch.float)
+        pos: torch.tensor = self.pos[block_idx].to(torch.float)
 
         xyMid = self._get_block_mid_for_idx(index)
 
@@ -190,10 +190,10 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
         pos[:,2] -= pos.min(dim=0).values[2]
 
         d = Data(
-            pos = pos, 
-            x = self.features[block_idx].to(torch.float),
-            y = self.data.y[block_idx].to(torch.long),
-            inner_idx = inner_idx,
+            pos = pos.contiguous(), 
+            x = self.features[block_idx].to(torch.float).contiguous(),
+            y = self.data.y[block_idx].to(torch.long).contiguous(),
+            inner_idx = inner_idx.contiguous(),
         )
         return d
 

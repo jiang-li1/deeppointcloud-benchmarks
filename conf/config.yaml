@@ -1,10 +1,10 @@
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
 experiment:
-    model_name: pointnet2
+    model_name: SimpleKPConv
     checkpoint_dir: outputs/checkpoints
-    resume: True
+    resume: False
     task: segmentation
-    dataset: ahn_aerial
+    dataset: shapenet
 
 # parameters for Weights and Biases
 wandb:
@@ -19,7 +19,7 @@ tensorboard:
 training:
     shuffle: False
     num_workers: 4
-    batch_size: 1
+    batch_size: 4
     cuda: True
     precompute_multi_scale: False # Compute multiscate features on cpu for faster training / inference
     epochs: 100
