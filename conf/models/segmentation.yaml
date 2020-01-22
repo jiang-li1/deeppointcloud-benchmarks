@@ -297,7 +297,7 @@ models:
         down_conv:
             module_name: KPConv
             ratios: [0.2, 0.25]
-            radius: [0.2, 0.4]
+            radius: [0.2 * SCALE, 0.4 * SCALE]
             down_conv_nn: [[FEAT, 32], [32, 64]]
         up_conv:
             module_name: FPModule

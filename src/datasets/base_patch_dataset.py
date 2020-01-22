@@ -6,7 +6,7 @@ import math
 import torch
 from torch_geometric.data import InMemoryDataset, Data, Dataset
 
-from datasets.base_dataset import BaseDataset
+from src.datasets.base_dataset import BaseDataset
 # from utils.pointcloud_utils import build_kdtree
 
 class BasePointCloud():

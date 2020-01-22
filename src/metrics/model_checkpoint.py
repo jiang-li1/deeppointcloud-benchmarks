@@ -6,7 +6,7 @@ import sys
 import torch
 import logging
 
-ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
+ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")
 
 from src.models.base_model import BaseModel
 from src.utils.colors import COLORS, colored_print

@@ -10,9 +10,9 @@ ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 sys.path.append(ROOT)
 
 from custom_dataset.pcd_utils import AHNPointCloud
-from datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
-from datasets.base_dataset import BaseDataset
-from metrics.segmentation_tracker import SegmentationTracker
+from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
+from src.datasets.base_dataset import BaseDataset
+from src.metrics.segmentation_tracker import SegmentationTracker
 
 class AHNTilesDataset(InMemoryDataset):
 
