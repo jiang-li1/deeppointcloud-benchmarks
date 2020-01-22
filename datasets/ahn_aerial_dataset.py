@@ -6,13 +6,13 @@ import torch
 from torch.utils.data import RandomSampler
 from torch_geometric.data import InMemoryDataset
 
-ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
+ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 sys.path.append(ROOT)
 
 from custom_dataset.pcd_utils import AHNPointCloud
-from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
-from src.datasets.base_dataset import BaseDataset
-from src.metrics.segmentation_tracker import SegmentationTracker
+from datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
+from datasets.base_dataset import BaseDataset
+from metrics.segmentation_tracker import SegmentationTracker
 
 class AHNTilesDataset(InMemoryDataset):
 
@@ -29,10 +29,6 @@ class AHNTilesDataset(InMemoryDataset):
         '37EN2_11_section.laz'
     ]
 
-    tiny_tile = [
-        '37EN2_11_section_tiny.laz'
-    ]
-
 
     def __init__(self, root, split, transform=None, pre_transform=None, pre_filter=None):
 
@@ -44,8 +40,6 @@ class AHNTilesDataset(InMemoryDataset):
 
     @property
     def raw_file_names(self):
-        if self.split == 'eval':
-            return self.tiny_tile
         # return self.adriaan_tiles_train if self.split == 'train' else self.adriaan_tiles_test
         return self.small_tile
         
@@ -84,54 +78,37 @@ class AHNMultiCloudPatchDataset(BaseMultiCloudPatchDataset):
 
 class AHNAerialDataset(BaseDataset):
 
-    def __init__(self, dataset_opt, training_opt, eval_mode=False):
+    def __init__(self, dataset_opt, training_opt):
         super().__init__(dataset_opt, training_opt)
         self._data_path = osp.join(ROOT, dataset_opt.dataroot, "AHNTilesDataset")
 
-        if eval_mode:
-            self._init_for_eval(dataset_opt, training_opt)
-        else:
-            self.train_dataset = AHNMultiCloudPatchDataset(
-                AHNTilesDataset(self._data_path, "train"),
-                dataset_opt.patch_opt,
-            )
-
-            self.test_dataset = AHNMultiCloudPatchDataset(
-                AHNTilesDataset(self._data_path, "test"),
-                dataset_opt.patch_opt,
-            )
-
-            self._create_dataloaders(
-                self.train_dataset, 
-                self.test_dataset, 
-                validation=None,
-                train_sampler=RandomSampler(
-                    self.train_dataset, 
-                    replacement=True,
-                    num_samples=100
-                ),
-                test_sampler=RandomSampler(
-                    self.test_dataset,
-                    replacement=True,
-                    num_samples=50
-                )
-            )
-
-        self.pointcloud_scale = 5
-
-    def _init_for_eval(self, dataset_opt, training_opt):
+        self.train_dataset = AHNMultiCloudPatchDataset(
+            AHNTilesDataset(self._data_path, "train"),
+            dataset_opt.patch_opt,
+        )
 
         self.test_dataset = AHNMultiCloudPatchDataset(
-            AHNTilesDataset(self._data_path, "eval"),
+            AHNTilesDataset(self._data_path, "test"),
             dataset_opt.patch_opt,
         )
 
         self._create_dataloaders(
-            self.test_dataset,
-            self.test_dataset,
-            validation=None
+            self.train_dataset, 
+            self.test_dataset, 
+            validation=None,
+            train_sampler=RandomSampler(
+                self.train_dataset, 
+                replacement=True,
+                num_samples=100
+            ),
+            test_sampler=RandomSampler(
+                self.test_dataset,
+                replacement=True,
+                num_samples=50
+            )
         )
 
+        self.pointcloud_scale = 5
 
     @property
     def class_to_segments(self):
@@ -151,5 +128,7 @@ class AHNAerialDataset(BaseDataset):
             [BaseTracker] -- tracker
         """
         return SegmentationTracker(dataset, wandb_log=wandb_opt.log, use_tensorboard=tensorboard_opt.log)
+
+
 
 
