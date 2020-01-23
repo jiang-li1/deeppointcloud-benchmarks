@@ -19,10 +19,11 @@ class AHNTilesDataset(InMemoryDataset):
     adriaan_tiles_train = [
             '37EN2_11.LAZ',
             '37EN2_16.LAZ',
-            '37FZ2_21.LAZ',
+            '43FZ2_20.LAZ',
     ]
     adriaan_tiles_test = [
-            '43FZ2_20.LAZ',
+            '37FZ2_21.LAZ',
+
     ]
 
     small_tile = [
