@@ -30,11 +30,11 @@ from src.utils.model_building_utils.model_definition_resolver import resolve_mod
 from src.utils.colors import COLORS
 from src.utils.config import merges_in_sub, set_format
 
-def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint, log):
-    model.eval()
-    tracker.reset("test")
-    loader = dataset.test_dataloader()
-    globalClassif = np.full(loader.dataset.data.pos.shape[0], -1)
+from utils.visualization.eval_vis import visualize_classes, visualize_predictions, visualize_difference
+from src.datasets.base_patch_dataset import ClassifiedPointCloud
+
+def eval_model(model, loader, tracker, device):
+    globalClassif = torch.full((loader.dataset.data.pos.shape[0],), -1).to(torch.long)
     with Ctq(loader) as tq_test_loader:
         for data in tq_test_loader:
             data = data.to(device)
@@ -42,15 +42,32 @@ def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: Mo
                 model.set_input(data)
                 model.forward()
 
-            predClass = np.argmax(model.output.cpu().numpy(), 1)
-            globalClassif[data.global_index.cpu().numpy()] = predClass
-            import pdb; pdb.set_trace()
+            predClass = torch.argmax(model.output.cpu(), 1)
+            globalClassif[data.global_index] = predClass
 
             tracker.track(model)
             tq_test_loader.set_postfix(**tracker.get_metrics(), color=COLORS.TEST_COLOR)
 
+            break
+
+    return globalClassif
+
+
+def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint, log, eval_name = None):
+    model.eval()
+    tracker.reset("test")
+    loader = dataset.test_dataloader()
+
+    globalClassif = eval_model(model, loader, tracker, device)
+
     metrics = tracker.publish()
     tracker.print_summary()
+
+    # visualize_classes(ClassifiedPointCloud.from_data(loader.dataset.data))
+    # visualize_predictions(ClassifiedPointCloud.from_data(loader.dataset.data), globalClassif)
+    visualize_difference(ClassifiedPointCloud.from_data(loader.dataset.data), globalClassif)
+
+
 
 @hydra.main(config_path='conf/config.yaml')
 def main(cfg: DictConfig):
@@ -111,7 +128,7 @@ def main(cfg: DictConfig):
     )
 
     # Run training / evaluation
-    test(model, dataset, device, tracker, checkpoint, log)
+    test(model, dataset, device, tracker, checkpoint, log, eval_name=cfg.experiment.name)
 
 if __name__ == "__main__":
     main()

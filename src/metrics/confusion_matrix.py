@@ -49,6 +49,10 @@ class ConfusionMatrix:
         existing_class_mask = union != 0
         return iou, existing_class_mask
 
+    def get_accuracy_per_class(self):
+        pass
+
+
     def get_overall_accuracy(self):
         """returns 64-bit float"""
         confusion_matrix = self.confusion_matrix

@@ -4,17 +4,36 @@ import sys
 ROOT = osp.join(osp.dirname(osp.realpath(__file__)), '..', '..')
 sys.path.append(ROOT)
 
+import torch
 import numpy as np 
 import open3d as o3d
 
-from src.datasets.base_patch_dataset import BasePointCloud
+from src.datasets.base_patch_dataset import PointCloud, ClassifiedPointCloud
 
-def pointcloud_to_o3d_pcd(cloud : BasePointCloud):
+def pointcloud_to_o3d_pcd(cloud : PointCloud):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(cloud.pos.numpy())
     return pcd
 
-def pointcloud_to_z_grey_o3d_pcd(cloud: BasePointCloud):
+def clas_pointcloud_to_z_coloured_o3d_pcd(cloud: PointCloud, classes: torch.tensor):
+
+    pcd = pointcloud_to_z_grey_o3d_pcd(cloud)
+
+    classColours = np.array([
+        [1, 0, 0], 
+        [0, 1, 0], 
+        [0, 0, 1],
+        [1, 1, 0], 
+        [1, 0, 1], 
+        [0, 1, 1],
+        [0.5, 0.5, 0.5],
+    ])
+
+    np.asarray(pcd.colors)[:] *= classColours[classes.cpu().numpy()]
+    return pcd
+    
+
+def pointcloud_to_z_grey_o3d_pcd(cloud: PointCloud) -> o3d.geometry.PointCloud:
     pcd = pointcloud_to_o3d_pcd(cloud)
 
     posZScale = (cloud.maxPoint[2].item() - cloud.pos[:,2]) / (cloud.maxPoint[2].item() - cloud.minPoint[2].item())

@@ -5,6 +5,7 @@ experiment:
     resume: True
     task: segmentation
     dataset: ahn_aerial
+    name: ahn_small #experiment name, used for saving outputs
 
 # parameters for Weights and Biases
 wandb:

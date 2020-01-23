@@ -9,7 +9,7 @@ from torch_geometric.data import InMemoryDataset, Data, Dataset
 from src.datasets.base_dataset import BaseDataset
 # from utils.pointcloud_utils import build_kdtree
 
-class BasePointCloud():
+class PointCloud():
 
     def __init__(self, pos, features=None):
         self._pos = pos
@@ -48,8 +48,26 @@ class BasePointCloud():
 
         return self._minPoint, self._maxPoint
 
+    def __len__(self):
+        return self.pos.shape[0]
 
-class BasePointCloudPatchDataset(torch.utils.data.Dataset, BasePointCloud, ABC):
+class ClassifiedPointCloud(PointCloud):
+
+    def __init__(self, pos, classes, features=None):
+        super().__init__(pos, features)
+
+        self._classes = classes
+
+    @classmethod
+    def from_data(cls, data: Data):
+        return cls(data.pos, data.y, data.x)
+
+    @property
+    def classes(self) -> torch.tensor:
+        return self._classes
+
+
+class BasePointCloudPatchDataset(torch.utils.data.Dataset, PointCloud, ABC):
     '''ABC for classes which generate patches from a single pointcloud
 
     PointCloudPatchDatasets should be backed by a torch_geometric.data.Data object 

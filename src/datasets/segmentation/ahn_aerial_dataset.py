@@ -12,7 +12,7 @@ sys.path.append(ROOT)
 from custom_dataset.pcd_utils import AHNPointCloud
 from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
 from src.datasets.base_dataset import BaseDataset
-from src.metrics.segmentation_tracker import SegmentationTracker
+from src.metrics.ahn_tracker import AHNTracker
 
 class AHNTilesDataset(InMemoryDataset):
 
@@ -141,6 +141,9 @@ class AHNAerialDataset(BaseDataset):
             validation=None
         )
 
+    @property
+    def class_num_to_name(self):
+        return AHNPointCloud.clasNumToName
 
     @property
     def class_to_segments(self):
@@ -159,6 +162,6 @@ class AHNAerialDataset(BaseDataset):
         Returns:
             [BaseTracker] -- tracker
         """
-        return SegmentationTracker(dataset, wandb_log=wandb_opt.log, use_tensorboard=tensorboard_opt.log)
+        return AHNTracker(dataset, wandb_log=wandb_opt.log, use_tensorboard=tensorboard_opt.log)
 
 
