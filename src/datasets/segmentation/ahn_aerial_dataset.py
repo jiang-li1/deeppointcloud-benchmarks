@@ -9,7 +9,7 @@ from torch_geometric.data import InMemoryDataset
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
 sys.path.append(ROOT)
 
-from custom_dataset.pcd_utils import AHNPointCloud
+from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
 from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
 from src.datasets.base_dataset import BaseDataset
 from src.metrics.ahn_tracker import AHNTracker

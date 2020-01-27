@@ -2,8 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pcd_utils import PointCloud, AHNPointCloud
-import pcd_utils
+from ahn_pointcloud import AHNPointCloud
 
 datapath = '/home/tristan/data/'
 # cloud = '37EN2_11_section.laz'
