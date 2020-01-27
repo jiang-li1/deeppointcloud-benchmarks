@@ -9,10 +9,16 @@ import numpy as np
 import open3d as o3d
 
 from src.datasets.base_patch_dataset import PointCloud, ClassifiedPointCloud
+from utils.custom_datasets.file_pointcloud import FilePointCloud
 
 def pointcloud_to_o3d_pcd(cloud : PointCloud):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(cloud.pos.numpy())
+    return pcd
+
+def file_pointcloud_to_o3d_pcd(cloud: FilePointCloud):
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(cloud.pos)
     return pcd
 
 def clas_pointcloud_to_z_coloured_o3d_pcd(cloud: PointCloud, classes: torch.tensor):
@@ -106,3 +112,4 @@ def block_to_o3d_lineset(minXYZ, maxXYZ, colour=[1, 0, 0]):
 def visualize_pointcloud(cloud):
     pcd = pointcloud_to_o3d_pcd(cloud)
     o3d.visualization.draw_geometries([pcd])
+

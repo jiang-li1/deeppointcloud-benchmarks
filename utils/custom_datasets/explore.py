@@ -1,12 +1,19 @@
+import os.path as osp
+import sys
+ROOT = osp.join(osp.dirname(osp.realpath(__file__)), '..', '..')
+sys.path.append(ROOT)
 
 import matplotlib.pyplot as plt
 import numpy as np
 
+from utils.visualization.vis import visualize_file_pointcloud
+
 from ahn_pointcloud import AHNPointCloud
 
+
 datapath = '/home/tristan/data/'
-# cloud = '37EN2_11_section.laz'
-cloud = 'adriaan_tiles/37EN2_11.LAZ'
+cloud = '37EN2_11_section.laz'
+# cloud = 'adriaan_tiles/37EN2_11.LAZ'
 
 # pointcloud = PointCloud(datapath + cloud)
 
