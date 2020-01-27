@@ -2,9 +2,11 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 import math
+import hashlib
 
 import torch
 from torch_geometric.data import InMemoryDataset, Data, Dataset
+from overrides import overrides
 
 from src.datasets.base_dataset import BaseDataset
 # from utils.pointcloud_utils import build_kdtree
@@ -212,6 +214,7 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
         return self.numBlocksX * self.numBlocksY
 
     def __getitem__(self, index):
+        # print('Accessing {}'.format(index))
         block_idx = self._get_block_index_arr(index)
         inner_idx = self._get_inner_block_index_into_block(index)
 
@@ -324,9 +327,9 @@ class FailSafeIterableDataset(torch.utils.data.IterableDataset):
     '''
 
     def __init__(self, dataset: torch.utils.data.Dataset, sampler: torch.utils.data.Sampler):
-        self._dataset = dataset
         self._sampler = iter(sampler)
-        self._max_retries = 100
+        self._dataset = dataset
+        self._max_retries = 10
 
     def __iter__(self):
         return self
@@ -334,18 +337,70 @@ class FailSafeIterableDataset(torch.utils.data.IterableDataset):
     def __next__(self):
 
         for _ in range(self._max_retries):
+
             idx = next(self._sampler)
 
             try:
-                data = self._dataset[idx]
-            except BadDataException:
+                return self._dataset[idx]
+            except BadDataException as e:
+                print('Skipping bad data sample', print(str(e)))
                 continue
         
         raise BadDataException("Dataset returned BadDataException more times than _max_retries")
+
+    #forward all attribute calls to the underlying dataset
+    #(e.g. num_features)
+    def __getattr__(self, name):
+        return getattr(self._dataset, name)
+
+class UniqueRandomSampler(torch.utils.data.RandomSampler):
+    '''
+    Random sampler which producess unique indexes even when
+    duplicated across torch dataloader worker threads. 
+
+    torch.utils.data.RandomSampler will produce the same sequence
+    of indexes in each worker thread.
+
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._offset = None
+
+    def _get_offset(self):
+
+        if self._offset is not None:
+            return self._offset
+
+        worker_info = torch.utils.data.get_worker_info()
+
+        if worker_info is None:
+            self._offset = 0
+        else:      
+            self._offset = int(
+                hashlib.md5(
+                    str(worker_info.id).encode()
+                ).hexdigest(),
+                16
+            )     
+
+        return self._offset
+
+    @overrides
+    def __iter__(self):
+        return (
+            (idx + self._get_offset()) % len(self.data_source)
+            for idx in super().__iter__()
+        )
+
+
+
+
+
         
 
 
-        
 
     
 
