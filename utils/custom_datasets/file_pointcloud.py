@@ -1,6 +1,8 @@
 import os.path as osp
+import sys
 PARENT_DIR = osp.join(osp.dirname(osp.realpath(__file__)))
-# ROOT = osp.join(PARENT_DIR, '..', '..')
+ROOT = osp.join(PARENT_DIR, '..', '..')
+sys.path.append(ROOT)
 
 from pathlib import Path
 from collections import OrderedDict
@@ -11,7 +13,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas
 
-from pcd_io_utils import cloud_to_recarray, numpy_to_file
+from utils.custom_datasets.pcd_io_utils import cloud_to_recarray, numpy_to_file
 
 
 def recarray_col_as_type(recarr : np.ndarray, colName, newType):

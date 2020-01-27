@@ -343,7 +343,7 @@ class FailSafeIterableDataset(torch.utils.data.IterableDataset):
             try:
                 return self._dataset[idx]
             except BadDataException as e:
-                print('Skipping bad data sample', print(str(e)))
+                # print('Skipping bad data sample', print(str(e)))
                 continue
         
         raise BadDataException("Dataset returned BadDataException more times than _max_retries")
