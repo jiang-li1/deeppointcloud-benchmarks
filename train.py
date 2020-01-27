@@ -38,13 +38,18 @@ def train(epoch, model: BaseModel, dataset, device: str, tracker: BaseTracker, c
     iter_data_time = time.time()
     with Ctq(train_loader) as tq_train_loader:
         for i, data in enumerate(tq_train_loader):
+
             data = data.to(device)  # This takes time
 
             model.set_input(data)
             t_data = time.time() - iter_data_time
 
             iter_start_time = time.time()
-            model.optimize_parameters(dataset.batch_size)
+
+            try:
+                model.optimize_parameters(dataset.batch_size)
+            except Exception as e:
+                import pdb; pdb.set_trace()
 
             if i % 10 == 0:
                 tracker.track(model)

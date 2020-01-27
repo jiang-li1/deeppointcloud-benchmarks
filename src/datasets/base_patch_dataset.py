@@ -9,6 +9,11 @@ from torch_geometric.data import InMemoryDataset, Data, Dataset
 from src.datasets.base_dataset import BaseDataset
 # from utils.pointcloud_utils import build_kdtree
 
+class BadDataException(Exception):
+
+    def __init__(self, message):
+        super().__init__(message)
+
 class PointCloud():
 
     def __init__(self, pos, features=None):
@@ -183,10 +188,11 @@ class BasePatchPointBallDataset(BasePatchDataset, ABC):
 
 class Grid2DPatchDataset(BasePointCloudPatchDataset):
 
-    def __init__(self, data: Data, blockX, blockY, contextDist, eval_mode=False):
+    def __init__(self, data: Data, blockX, blockY, contextDist, eval_mode=False, min_patch_size=2):
         super().__init__(data)
 
         self.eval_mode = eval_mode
+        self.min_patch_size = min_patch_size
 
         self.blockXDist = blockX
         self.blockYDist = blockY
@@ -210,6 +216,9 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
         inner_idx = self._get_inner_block_index_into_block(index)
 
         pos: torch.tensor = self.pos[block_idx].to(torch.float)
+
+        if pos.shape[0] < self.min_patch_size:
+            raise BadDataException("Patch at index: {} has {} (< min_patch_size) points".format(index, pos.shape[0]))
 
         xyMid = self._get_block_mid_for_idx(index)
 
@@ -303,7 +312,40 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
         return torch.arange(pts.shape[0])[mask]
 
 
+class FailSafeIterableDataset(torch.utils.data.IterableDataset):
+    '''Creates an IterableDataset around an ordinary map-style dataset
+    where some indicies point to bad data. For example a patch dataset
+    where some patches are empty. 
 
+    The underlying dataset should throw BadDataException to indicate
+    that the index is bad. FailSafeIterableDataset will try retry 
+    up to max_retries times to fetch an item from the dataset. 
+
+    '''
+
+    def __init__(self, dataset: torch.utils.data.Dataset, sampler: torch.utils.data.Sampler):
+        self._dataset = dataset
+        self._sampler = iter(sampler)
+        self._max_retries = 100
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+
+        for _ in range(self._max_retries):
+            idx = next(self._sampler)
+
+            try:
+                data = self._dataset[idx]
+            except BadDataException:
+                continue
+        
+        raise BadDataException("Dataset returned BadDataException more times than _max_retries")
+        
+
+
+        
 
     
 

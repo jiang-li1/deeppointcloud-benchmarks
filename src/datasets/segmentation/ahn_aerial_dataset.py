@@ -10,7 +10,7 @@ ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..
 sys.path.append(ROOT)
 
 from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
-from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset
+from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset, FailSafeIterableDataset
 from src.datasets.base_dataset import BaseDataset
 from src.metrics.ahn_tracker import AHNTracker
 
@@ -47,12 +47,12 @@ class AHNTilesDataset(InMemoryDataset):
     def raw_file_names(self):
         if self.split == 'eval':
             return self.tiny_tile
-        # return self.adriaan_tiles_train if self.split == 'train' else self.adriaan_tiles_test
-        return self.small_tile
+        return self.adriaan_tiles_train if self.split == 'train' else self.adriaan_tiles_test
+        # return self.small_tile
         
     @property
     def processed_file_names(self):
-        return ['{}_data.pt'.format(self.split)]
+        return ['{}_data.pt'.format('_'.join(self.raw_file_names))]
 
     def download(self):
         raise NotImplementedError
@@ -99,30 +99,51 @@ class AHNAerialDataset(BaseDataset):
         if eval_mode:
             self._init_for_eval(dataset_opt, training_opt)
         else:
-            self.train_dataset = AHNMultiCloudPatchDataset(
+
+            train_patch_dataset = AHNMultiCloudPatchDataset(
                 AHNTilesDataset(self._data_path, "train"),
                 dataset_opt.patch_opt,
             )
-
-            self.test_dataset = AHNMultiCloudPatchDataset(
+            self.train_dataset = FailSafeIterableDataset(
+                train_patch_dataset,
+                RandomSampler(
+                    train_patch_dataset,
+                    replacement=True,
+                    num_samples=100,
+                )
+            )
+            test_patch_dataset = AHNMultiCloudPatchDataset(
                 AHNTilesDataset(self._data_path, "test"),
                 dataset_opt.patch_opt,
             )
-
-            self._create_dataloaders(
-                self.train_dataset, 
-                self.test_dataset, 
-                validation=None,
-                train_sampler=RandomSampler(
-                    self.train_dataset, 
+            self.test_dataset = FailSafeIterableDataset(
+                test_patch_dataset,
+                RandomSampler(
+                    test_patch_dataset,
                     replacement=True,
-                    num_samples=100
-                ),
-                test_sampler=RandomSampler(
-                    self.test_dataset,
-                    replacement=True,
-                    num_samples=50
+                    num_samples=50,
                 )
+            )
+
+            # self._create_dataloaders(
+            #     self.train_dataset, 
+            #     self.test_dataset, 
+            #     validation=None,
+            #     train_sampler=RandomSampler(
+            #         self.train_dataset, 
+            #         replacement=True,
+            #         num_samples=100
+            #     ),
+            #     test_sampler=RandomSampler(
+            #         self.test_dataset,
+            #         replacement=True,
+            #         num_samples=50
+            #     )
+            # )
+            self._create_dataloaders(
+                self.train_dataset,
+                self.test_dataset,
+                validation=None,
             )
 
         self.pointcloud_scale = 5
