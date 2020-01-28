@@ -12,6 +12,8 @@ import wandb
 from collections import OrderedDict
 from torch.utils.tensorboard import SummaryWriter
 import logging
+from tabulate import tabulate
+import pandas as pd
 
 from src.metrics.confusion_matrix import ConfusionMatrix
 from src.metrics.model_checkpoint import ModelCheckpoint
@@ -103,7 +105,10 @@ class BaseTracker:
         for key, value in metrics.items():
 
             #print multiline values on a new line
-            strValue = str(value)
+            if type(value) == pd.DataFrame:
+                strValue = tabulate(value, headers='keys', tablefmt='psql')
+            else:
+                strValue = str(value)
             if strValue.count('\n') > 0:
                 strValue = '\n' + strValue
 

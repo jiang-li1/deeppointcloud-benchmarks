@@ -48,7 +48,7 @@ def eval_model(model, loader, tracker, device):
             tracker.track(model)
             tq_test_loader.set_postfix(**tracker.get_metrics(), color=COLORS.TEST_COLOR)
 
-            break
+            # break
 
     return globalClassif
 

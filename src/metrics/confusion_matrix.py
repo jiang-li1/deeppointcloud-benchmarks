@@ -49,8 +49,35 @@ class ConfusionMatrix:
         existing_class_mask = union != 0
         return iou, existing_class_mask
 
-    def get_accuracy_per_class(self):
-        pass
+    def get_fp_per_class(self):
+        TP_plus_FP = np.sum(self.confusion_matrix, axis=1)
+        TP = np.diagonal(self.confusion_matrix)
+        return TP_plus_FP - TP
+
+    def get_fn_per_class(self):
+        TP_plus_FN = np.sum(self.confusion_matrix, axis=0)
+        TP = np.diagonal(self.confusion_matrix)
+        return TP_plus_FN - TP
+
+    def get_tp_per_class(self):
+        return np.diagonal(self.confusion_matrix)
+
+    def get_tn_per_class(self):
+        return self.count_gt_per_class().sum() - (
+            self.get_tp_per_class() +
+            self.get_fp_per_class() + 
+            self.get_fn_per_class()
+        )
+
+    #proportion of points classified as class x which are false positives
+    def get_fp_rate_per_class(self):
+        fp_pc = self.get_fp_per_class()
+        return fp_pc / (fp_pc + self.get_tp_per_class())
+
+    #proportion of points classified as not class x which are false negatives
+    def get_fn_rate_per_class(self):
+        fn_pc = self.get_fn_per_class()
+        return fn_pc / (fn_pc + self.get_tn_per_class())
 
 
     def get_overall_accuracy(self):
@@ -93,6 +120,13 @@ class ConfusionMatrix:
 
     def count_gt(self, ground_truth):
         return self.confusion_matrix[ground_truth, :].sum()
+
+    def count_gt_per_class(self):
+        return np.array([self.count_gt(i) for i in range(len(self.confusion_matrix))])
+
+    def gt_proportion_per_class(self):
+        count_pc = self.count_gt_per_class()
+        return count_pc / count_pc.sum()
 
 
 def save_confusion_matrix(cm, path2save, ordered_names):

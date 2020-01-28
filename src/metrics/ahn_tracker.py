@@ -38,7 +38,7 @@ class AHNTracker(BaseTracker):
         self._acc = 100 * self._confusion_matrix.get_overall_accuracy()
         self._macc = 100 * self._confusion_matrix.get_mean_class_accuracy()
         self._miou = 100 * self._confusion_matrix.get_average_intersection_union()
-        self._conf_matrix = self._confusion_matrix.get_confusion_matrix()
+        # self._conf_matrix = self._confusion_matrix.get_confusion_matrix()
 
     # def _get_str_conf_matrix(self):
 
@@ -95,6 +95,44 @@ class AHNTracker(BaseTracker):
         metrics["{}_miou".format(self._stage)] = self._miou
         if verbose:
             # metrics['{}_conf_matrix'.format(self._stage)] = self._get_str_conf_matrix()
-            metrics['{}_conf_matrix'.format(self._stage)] = pd.DataFrame(self._conf_matrix, ['pred ' + l for l in self.labels], self.labels)
+
+            confMat = self._confusion_matrix.get_confusion_matrix()
+            confMat = np.concatenate((
+                confMat,
+                np.expand_dims(self._confusion_matrix.get_fn_per_class(), axis=0),
+                np.expand_dims(self._confusion_matrix.get_fn_rate_per_class(), axis=0)
+            ))
+
+            fpPerClass = self._confusion_matrix.get_fp_per_class()
+            fpPerClass = np.append(fpPerClass, [None]*2)
+            fpRate = self._confusion_matrix.get_fp_rate_per_class()
+            fpRate = np.append(fpRate, [None]*2)
+            confMat = np.concatenate((
+                confMat,
+                np.expand_dims(fpPerClass, axis=1),
+                np.expand_dims(fpRate, axis=1),
+            ), axis=1)
+
+            metrics['{}_conf_matrix'.format(self._stage)] = pd.DataFrame(
+                confMat, 
+                ['pred ' + l for l in self.labels] + ["FN (GT but not pred)", "FN Rate"], 
+                [*self.labels, 'FP (pred but not GT)', 'FP Rate'])
+
+            count = np.expand_dims(self._confusion_matrix.count_gt_per_class(), axis=0)
+            prop = np.expand_dims(self._confusion_matrix.gt_proportion_per_class(), axis=0)
+            metrics['{}_distribution'.format(self._stage)] = pd.DataFrame(
+                np.concatenate((count, prop)),
+                ['Count', 'Proportion'],
+                self.labels
+            )
+
+            classIOU = self._confusion_matrix.get_intersection_union_per_class()[0]
+
+            metrics["{}_iou_per_class".format(self._stage)] = pd.DataFrame(
+                np.expand_dims(classIOU, axis=0),
+                ['iou'],
+                self.labels
+            )
+
 
         return metrics
