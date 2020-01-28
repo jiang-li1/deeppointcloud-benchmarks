@@ -101,5 +101,11 @@ class BaseTracker:
         metrics = self.get_metrics(verbose=True)
         log.info("".join(["=" for i in range(50)]))
         for key, value in metrics.items():
-            log.info("    {} = {}".format(key, value))
+
+            #print multiline values on a new line
+            strValue = str(value)
+            if strValue.count('\n') > 0:
+                strValue = '\n' + strValue
+
+            log.info("    {} = {}".format(key, strValue))
         log.info("".join(["=" for i in range(50)]))
