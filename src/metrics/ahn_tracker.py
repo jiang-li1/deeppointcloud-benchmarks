@@ -32,12 +32,20 @@ class AHNTracker(BaseTracker):
 
         outputs = self._convert(model.get_output())
         targets = self._convert(model.get_labels())
+
+        self.track_outputs(outputs, targets)        
+
+    def track_outputs(self, outputs, targets):
+        outputs = self._convert(outputs)
+        targets = self._convert(targets)
+
         assert outputs.shape[0] == len(targets)
         self._confusion_matrix.count_predicted_batch(targets, np.argmax(outputs, 1))
 
         self._acc = 100 * self._confusion_matrix.get_overall_accuracy()
         self._macc = 100 * self._confusion_matrix.get_mean_class_accuracy()
         self._miou = 100 * self._confusion_matrix.get_average_intersection_union()
+
         # self._conf_matrix = self._confusion_matrix.get_confusion_matrix()
 
     # def _get_str_conf_matrix(self):

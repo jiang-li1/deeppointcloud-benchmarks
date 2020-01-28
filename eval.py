@@ -1,4 +1,5 @@
 from os import path as osp
+ROOT = osp.join(osp.dirname(osp.realpath(__file__)))
 import open3d
 import pdal
 import torch
@@ -33,8 +34,17 @@ from src.utils.config import merges_in_sub, set_format
 from utils.visualization.eval_vis import visualize_classes, visualize_predictions, visualize_difference
 from src.datasets.base_patch_dataset import ClassifiedPointCloud
 
-def eval_model(model, loader, tracker, device):
-    globalClassif = torch.full((loader.dataset.data.pos.shape[0],), -1).to(torch.long)
+def eval_model(model, loader: torch.utils.data.DataLoader, tracker, device, eval_name, use_cache=True):
+
+    cache_fname = osp.join(ROOT, 'outputs', '.eval_cache', eval_name + '.pt') 
+
+    if use_cache and osp.exists(cache_fname):
+        print('Using cached eval: ', cache_fname)
+        return torch.load(cache_fname)
+
+    globalOutput = torch.full((loader.dataset.data.pos.shape[0], loader.dataset.num_classes), 0)
+    globalTargets = torch.full((loader.dataset.data.pos.shape[0],), -1).to(torch.long)
+
     with Ctq(loader) as tq_test_loader:
         for data in tq_test_loader:
             data = data.to(device)
@@ -42,15 +52,20 @@ def eval_model(model, loader, tracker, device):
                 model.set_input(data)
                 model.forward()
 
-            predClass = torch.argmax(model.output.cpu(), 1)
-            globalClassif[data.global_index] = predClass
+            globalOutput[data.global_index] = model.output.cpu()
+            globalTargets[data.global_index] = model.labels.cpu()
 
-            tracker.track(model)
-            tq_test_loader.set_postfix(**tracker.get_metrics(), color=COLORS.TEST_COLOR)
+            # predClass = torch.argmax(model.output.cpu(), 1)
+            # globalClassif[data.global_index] = predClass
+
+            # tracker.track(model)
+            # tq_test_loader.set_postfix(**tracker.get_metrics(), color=COLORS.TEST_COLOR)
 
             # break
 
-    return globalClassif
+    torch.save((globalOutput, globalTargets), cache_fname)
+
+    return globalOutput, globalTargets
 
 
 def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint, log, eval_name = None):
@@ -58,7 +73,11 @@ def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: Mo
     tracker.reset("test")
     loader = dataset.test_dataloader()
 
-    globalClassif = eval_model(model, loader, tracker, device)
+    globalOutput, globalTargets = eval_model(model, loader, tracker, device, eval_name)
+
+    globalClassif = torch.argmax(globalOutput.cpu(), 1)
+
+    tracker.track_outputs(globalOutput, globalTargets)
 
     metrics = tracker.publish()
     tracker.print_summary()
