@@ -46,7 +46,7 @@ class AHNTilesDataset(InMemoryDataset):
     @property
     def raw_file_names(self):
         if self.split == 'eval':
-            return self.tiny_tile
+            return self.adriaan_tiles_test
         return self.adriaan_tiles_train if self.split == 'train' else self.adriaan_tiles_test
         # return self.small_tile
         

@@ -399,6 +399,13 @@ class UniqueRandomSampler(torch.utils.data.RandomSampler):
         )
 
 class UniqueSequentialSampler(torch.utils.data.SequentialSampler):
+    '''
+    Sequential sampler which produces unique indexes even when
+    duplicated across torch dataloader worker threads.
+    
+    Use this instead of UniqueRandomSampler if you want to classify
+    the entire pointclouds (e.g. for evalulation as opposed to training)
+    '''
 
     def __init__(self, num_workers, *args, **kwargs):
         super().__init__(*args, **kwargs)
