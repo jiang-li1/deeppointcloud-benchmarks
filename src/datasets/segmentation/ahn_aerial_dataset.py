@@ -9,7 +9,6 @@ from torch_geometric.data import InMemoryDataset
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
 sys.path.append(ROOT)
 
-from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
 from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset, FailSafeIterableDataset, UniqueRandomSampler, UniqueSequentialSampler
 from src.datasets.base_dataset import BaseDataset
 from src.metrics.ahn_tracker import AHNTracker
@@ -58,6 +57,7 @@ class AHNTilesDataset(InMemoryDataset):
         raise NotImplementedError
 
     def process(self):
+        from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
 
         data_list = []
 
