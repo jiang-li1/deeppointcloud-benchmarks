@@ -71,6 +71,7 @@ def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: Mo
     model.eval()
     tracker.reset("test")
     loader = dataset.test_dataloader()
+    import pdb; pdb.set_trace()
     with Ctq(loader) as tq_test_loader:
         for data in tq_test_loader:
             data = data.to(device)
@@ -93,7 +94,7 @@ def run(cfg, model, dataset: BaseDataset, device, tracker: BaseTracker, checkpoi
         test(model, dataset, device, tracker, checkpoint, log)
 
     # Single test evaluation in resume case
-    if checkpoint.start_epoch > cfg.training.epochs:
+    if checkpoint.start_epoch >= cfg.training.epochs:
         test(model, dataset, device, tracker, checkpoint, log)
 
 

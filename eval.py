@@ -34,7 +34,7 @@ from src.utils.config import merges_in_sub, set_format
 from utils.visualization.eval_vis import visualize_classes, visualize_predictions, visualize_difference
 from src.datasets.base_patch_dataset import ClassifiedPointCloud
 
-def eval_model(model, loader: torch.utils.data.DataLoader, tracker, device, eval_name, use_cache=True):
+def eval_model(model, loader: torch.utils.data.DataLoader, tracker, device, eval_name, use_cache=False):
 
     cache_fname = osp.join(ROOT, 'outputs', '.eval_cache', eval_name + '.pt') 
 
@@ -45,7 +45,7 @@ def eval_model(model, loader: torch.utils.data.DataLoader, tracker, device, eval
     globalOutput = torch.full((loader.dataset.data.pos.shape[0], loader.dataset.num_classes), 0)
     globalTargets = torch.full((loader.dataset.data.pos.shape[0],), -1).to(torch.long)
 
-    with Ctq(loader) as tq_test_loader:
+    with Ctq(loader, total = len(loader.dataset)) as tq_test_loader:
         for data in tq_test_loader:
             data = data.to(device)
             with torch.no_grad():
@@ -72,6 +72,8 @@ def test(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: Mo
     model.eval()
     tracker.reset("test")
     loader = dataset.test_dataloader()
+
+    global globalOutput, globalTargets
 
     globalOutput, globalTargets = eval_model(model, loader, tracker, device, eval_name)
 

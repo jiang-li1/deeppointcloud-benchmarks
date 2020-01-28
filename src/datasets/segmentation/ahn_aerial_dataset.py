@@ -10,7 +10,7 @@ ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..
 sys.path.append(ROOT)
 
 from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
-from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset, FailSafeIterableDataset, UniqueRandomSampler
+from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset, FailSafeIterableDataset, UniqueRandomSampler, UniqueSequentialSampler
 from src.datasets.base_dataset import BaseDataset
 from src.metrics.ahn_tracker import AHNTracker
 
@@ -151,10 +151,17 @@ class AHNAerialDataset(BaseDataset):
 
     def _init_for_eval(self, dataset_opt, training_opt):
 
-        self.test_dataset = AHNPatchDataset.from_tiles_dataset(
+        test_patch_dataset = AHNPatchDataset.from_tiles_dataset(
             AHNTilesDataset(self._data_path, "eval"),
             **dataset_opt.patch_opt,
             eval_mode=True,
+        )
+        self.test_dataset = FailSafeIterableDataset(
+            test_patch_dataset,
+            UniqueSequentialSampler(
+                training_opt.num_workers,
+                test_patch_dataset
+            )
         )
 
         self._create_dataloaders(

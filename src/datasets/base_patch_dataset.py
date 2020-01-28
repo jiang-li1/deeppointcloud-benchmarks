@@ -353,6 +353,10 @@ class FailSafeIterableDataset(torch.utils.data.IterableDataset):
     def __getattr__(self, name):
         return getattr(self._dataset, name)
 
+    #this is just an approximation
+    def __len__(self):
+        return len(self._dataset)
+
 class UniqueRandomSampler(torch.utils.data.RandomSampler):
     '''
     Random sampler which producess unique indexes even when
@@ -393,6 +397,58 @@ class UniqueRandomSampler(torch.utils.data.RandomSampler):
             (idx + self._get_offset()) % len(self.data_source)
             for idx in super().__iter__()
         )
+
+class UniqueSequentialSampler(torch.utils.data.SequentialSampler):
+
+    def __init__(self, num_workers, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.num_workers = num_workers
+        self.i = 0
+        self._range = None
+
+    def _get_range(self, num_patches):
+
+        if self._range is not None:
+            return self._range
+
+        worker_info = torch.utils.data.get_worker_info()
+
+        # print('worker info: {}, num workers {}'.format(worker_info, self.num_workers))
+
+        if worker_info is None:
+            self._range = 0, num_patches
+            return self._range
+
+        wid = worker_info.id 
+
+        patchesPerWorker = num_patches // self.num_workers
+
+        start = wid * patchesPerWorker
+
+        if wid == self.num_workers - 1:
+            end = num_patches
+        else:
+            end = (wid+1) * patchesPerWorker
+
+        self._range = start, end
+        return self._range
+
+
+    @overrides
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        
+        start, end = self._get_range(len(self.data_source))
+        if self.i + start < end:
+            ret = self.i + start 
+            self.i += 1
+            return ret
+        else:
+            raise StopIteration
+
 
 
 
