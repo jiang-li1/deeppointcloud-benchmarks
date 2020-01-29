@@ -12,6 +12,7 @@ sys.path.append(ROOT)
 from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset, FailSafeIterableDataset, UniqueRandomSampler, UniqueSequentialSampler
 from src.datasets.base_dataset import BaseDataset
 from src.metrics.ahn_tracker import AHNTracker
+from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
 
 class AHNTilesDataset(InMemoryDataset):
 
@@ -57,7 +58,6 @@ class AHNTilesDataset(InMemoryDataset):
         raise NotImplementedError
 
     def process(self):
-        from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
 
         data_list = []
 

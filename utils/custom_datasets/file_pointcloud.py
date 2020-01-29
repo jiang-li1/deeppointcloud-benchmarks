@@ -13,8 +13,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas
 
-from utils.custom_datasets.pcd_io_utils import cloud_to_recarray, numpy_to_file
-
 
 def recarray_col_as_type(recarr : np.ndarray, colName, newType):
 
@@ -57,6 +55,7 @@ class FilePointCloud(ABC):
         
     @classmethod
     def from_cloud(cls, cloud, name = None, useCache = True):
+        from utils.custom_datasets.pcd_io_utils import cloud_to_recarray
 
         if name is None and type(cloud) is str:
             name = Path(cloud).stem
@@ -114,7 +113,9 @@ class FilePointCloud(ABC):
     #     return pcd
 
     def to_e57(self):
+        from utils.custom_datasets.pcd_io_utils import numpy_to_file
         numpy_to_file(self.to_recarray(), self.name, '.e57')
 
     def to_laz(self):
+        from utils.custom_datasets.pcd_io_utils import numpy_to_file
         numpy_to_file(self.to_recarray(), self.name, '.laz')
