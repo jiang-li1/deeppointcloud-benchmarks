@@ -23,12 +23,32 @@ def file_pointcloud_to_o3d_pcd(cloud: FilePointCloud):
     pcd.points = o3d.utility.Vector3dVector(cloud.pos)
     return pcd
 
+def colour_by_feature(pcd: o3d.geometry.PointCloud, feature: np.ndarray):
+
+    scale = (feature.max() - feature) / (feature.max() - feature.min())
+
+    scale = (0.9 * scale) + 0.1 #make sure no points are too light
+
+    # colours = np.concatenate(
+    #     (np.expand_dims(scale, 1), np.expand_dims(scale, 1), np.expand_dims(scale, 1),), axis=1
+    # )
+    colours = np.concatenate(
+        (scale, scale, scale),
+        axis=1
+    )
+
+    # import pdb; pdb.set_trace()
+
+    np.asarray(pcd.colors)[:] = colours
+    return pcd
 
 def colour_z_grey(pcd: o3d.geometry.PointCloud):
     pcd.paint_uniform_color([0.5] * 3)
 
     bb: o3d.geometry.AxisAlignedBoundingBox = pcd.get_axis_aligned_bounding_box()
     posZScale = (bb.get_max_bound()[2] - np.asarray(pcd.points)[:, 2]) / (bb.get_max_bound()[2] - bb.get_min_bound()[2])
+
+    posZScale = (0.9 * posZScale) + 0.1
 
     colours = np.concatenate(
         (np.expand_dims(posZScale, 1), np.expand_dims(posZScale, 1), np.expand_dims(posZScale, 1),), axis=1

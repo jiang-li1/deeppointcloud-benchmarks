@@ -10,9 +10,60 @@ from torch_geometric.data import Data
 
 from file_pointcloud import FilePointCloud
 
+def get_log_clip_intensity(intensity):
+    return np.log(
+        intensity.clip(0.001, 5000)
+    )
+
+class RawAHNPointCloud(FilePointCloud):
+    '''
+        AHNPointCloud with no processing applied. 
+    '''
+
+    _feature_names = [
+        'PointSourceId', 
+        'UserData', 
+        'ScanAngleRank', 
+        'NumberOfReturns',
+        'ReturnNumber',
+        'GpsTime',
+        'Intensity',
+        'Classification'
+    ]
+
+    def __init__(self, pos, features, name, recarray):
+        super().__init__(pos, name)
+
+        self.features = features
+        self.recarray = recarray
+
+    @classmethod
+    @overrides
+    def from_recarray(cls, recarray, name):
+
+        pos = np.vstack([recarray[field] for field in ['X', 'Y', 'Z']]).T
+        features = {f: np.expand_dims(recarray[f], axis=1) for f in cls._feature_names}
+
+        return cls(pos, features, name, recarray)
+
+    @classmethod
+    @overrides
+    def from_cache(cls, recarray, name):
+        raise NotImplementedError
+
+    @overrides
+    def to_recarray(self):
+        return self.recarray
+
+    @property
+    def clas(self):
+        return self.features['Classification']
+
+
+
 class AHNPointCloud(FilePointCloud):
 
-    clasNumToName = {
+    _clasNumToName = {
         0 : "vegetation",
         1 : "ground",
         2 : "building",
@@ -21,10 +72,6 @@ class AHNPointCloud(FilePointCloud):
     }
 
     features = ['intensity', 'num_returns', 'return_ordinal']
-
-    clasNameToNum = {v: k for k, v in clasNumToName.items()}
-
-    clasNames = list(clasNameToNum.keys())
 
     def __init__(self, pos, intensity, num_returns, return_ordinal, clas, name = None):
         super().__init__(pos, name)
@@ -93,6 +140,18 @@ class AHNPointCloud(FilePointCloud):
         clas = np.expand_dims(recarray['Classification'], axis=1)
 
         return (pos, intensity, num_returns, return_ordinal, clas)
+        
+    @classmethod
+    def clasNumToName(cls):
+        return cls._clasNumToName
+
+    @classmethod
+    def clasNameToNum(cls):
+        return {v: k for k, v in cls.clasNumToName().items()}
+
+    @classmethod
+    def clasNames(cls):
+        return list(cls.clasNameToNum().keys())
 
     def to_torch_data(self) -> Data:
         return Data(
@@ -114,11 +173,29 @@ class AHNPointCloud(FilePointCloud):
         self.clas[self.clas == 26] = 4
 
     def get_points_in_clas(self, clasName):
-        index = self.clas == self.clasNameToNum[clasName]
+        index = self.clas == self.clasNameToNum()[clasName]
         index = index.squeeze()
 
         return AHNPointCloud(self.pos[index], self.intensity[index], self.num_returns[index], self.return_ordinal[index], self.clas[index], self.name + '_' + clasName)
 
     def split_to_classes(self):
 
-        return {clasName: self.get_points_in_clas(clasName) for clasName in self.clasNameToNum.keys()}
+        return {clasName: self.get_points_in_clas(clasName) for clasName in self.clasNameToNum().keys()}
+
+class AHNVehiclePointCloud(AHNPointCloud):
+    '''
+        AHNPointCloud with vehicles labelled
+    '''
+
+    _vclasNumToName = {
+        5: "vehicle"
+    }
+
+    @classmethod
+    def clasNumToName(cls):
+        return {**super().clasNumToName(), **cls._vclasNumToName}
+
+    def remap_classification(self):
+        super().remap_classification()
+        self.clas[self.clas == 27] = 5
+

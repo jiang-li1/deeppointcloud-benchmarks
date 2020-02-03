@@ -66,7 +66,10 @@ class FilePointCloud(ABC):
             if osp.exists(cacheFile):
                 print('Using cached PointCloud: ', cacheFile)
                 arr = np.load(cacheFile)
-                return cls.from_cache(arr, name)
+                try:
+                    return cls.from_cache(arr, name)
+                except NotImplementedError:
+                    print('PointCloud of type {} does not support caching. Loading from file'.format(type(cls)))
 
         arr = cloud_to_recarray(cloud, useCache)
         pcd = cls.from_recarray(arr, name)
@@ -107,10 +110,27 @@ class FilePointCloud(ABC):
     def to_dataframe(self) -> pandas.DataFrame:
         return pandas.DataFrame(self.to_recarray())
 
-    # def to_o3d_pcd(self) -> o3d.geometry.PointCloud:
-    #     pcd = o3d.geometry.PointCloud()
-    #     pcd.points = o3d.utility.Vector3dVector(self.pos)
-    #     return pcd
+    def to_o3d_pcd(self, index=None):
+        import open3d as o3d
+        pcd = o3d.geometry.PointCloud()
+        if index is not None:
+            pcd.points = o3d.utility.Vector3dVector(self.pos[index])
+        else:
+            pcd.points = o3d.utility.Vector3dVector(self.pos)
+        return pcd
+
+    def visualize(self, phong=False):
+        import open3d as o3d
+        from utils.visualization.pcd_utils import colour_z_grey
+
+        pcd = self.to_o3d_pcd()
+        
+        if phong:
+            pcd.estimate_normals()
+
+        colour_z_grey(pcd)
+
+        o3d.visualization.draw_geometries([pcd])
 
     def to_e57(self):
         from utils.custom_datasets.pcd_io_utils import numpy_to_file

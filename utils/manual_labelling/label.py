@@ -10,11 +10,11 @@ import time
 from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
 from utils.visualization.pcd_utils import colour_z_grey
 
-o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+# o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
 
 datapath = "/home/tristan/deeppointcloud-benchmarks/data/AHNTilesDataset/raw/"
 
-cloud = "37EN2_11_tiny2.laz"
+cloud = "37EN2_11_section_tiny.laz"
 
 pcd = AHNPointCloud.from_cloud(datapath + cloud)
 
@@ -27,6 +27,7 @@ o3dpcd.paint_uniform_color([0.5] * 3)
 # o3dpcd = colour_z_grey(o3dpcd)
 
 vis = o3d.visualization.VisualizerWithEditing()
+# vis = o3d.visualization.VisualizerWithVertexSelection()
 vis.create_window()
 vis.add_geometry(o3dpcd)
 
@@ -35,6 +36,7 @@ def anim_cb(v: o3d.visualization.Visualizer):
     global o3dpcd
     pass
     idx = v.get_selected_points()
+    # idx = [p.index for p in v.get_picked_points()]
 
     if len(idx) > 0:
         np.asarray(o3dpcd.colors)[idx] *= np.array([1, 0, 0])
