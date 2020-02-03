@@ -22,8 +22,9 @@ global o3dpcd
 
 o3dpcd = o3d.geometry.PointCloud()
 o3dpcd.points = o3d.utility.Vector3dVector(pcd.pos)
-
-o3dpcd = colour_z_grey(o3dpcd)
+o3dpcd.estimate_normals()
+o3dpcd.paint_uniform_color([0.5] * 3)
+# o3dpcd = colour_z_grey(o3dpcd)
 
 vis = o3d.visualization.VisualizerWithEditing()
 vis.create_window()
