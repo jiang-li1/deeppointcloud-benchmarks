@@ -1,13 +1,6 @@
-import inspect
-import sys
-
 from enum import Enum
-import numpy as np
 import torch
 from torch import nn
-import torch.nn.functional as F
-from torch.nn import init
-import math
 from torch.nn import (
     Sequential as Seq,
     Linear as Lin,
@@ -15,16 +8,10 @@ from torch.nn import (
     LeakyReLU,
     BatchNorm1d as BN,
 )
-from torch_geometric.datasets import ModelNet
-import torch_geometric.transforms as T
-from torch_geometric.data import DataLoader
-from torch_geometric.nn import PointConv, fps, radius, global_max_pool, MessagePassing
-from torch.nn.parameter import Parameter
 from torch_geometric.utils import scatter_
 from src.core.sampling import FPSSampler
 from src.core.neighbourfinder import RadiusNeighbourFinder
 from .kernels import PointKernel, LightDeformablePointKernel, PointKernelPartialDense
-from torch_geometric.nn import global_mean_pool
 from torch_scatter import scatter_max
 
 
@@ -38,7 +25,6 @@ from .kernel_utils import kernel_point_optimization_debug
 from src.core.sampling import FPSSampler
 from src.core.neighbourfinder import RadiusNeighbourFinder
 from src.core.base_conv.message_passing import *
-from src.models.base_architectures import BaseFactory
 
 
 class KPConvModels(Enum):
@@ -48,26 +34,6 @@ class KPConvModels(Enum):
     LIGHTDEFORMABLEKPCONV = 3
     KPCONVPARTIALDENSE = 4
     RESNETBOTTLENECKPARTIALDENSE = 5
-
-
-class KPConvFactory(BaseFactory):
-    def get_module(self, index, flow=None):
-        if flow is None:
-            raise NotImplementedError
-
-        if flow.upper() == "UP":
-            return getattr(self.modules_lib, self.module_name_up, None)
-
-        if flow.upper() == "DOWN":
-            if self.module_name_down.upper() == str(KPConvModels.RESIDUALBKPCONV.name):
-                if index == 0:
-                    return KPConv
-                else:
-                    return ResidualBKPConv
-            else:
-                return getattr(self.modules_lib, self.module_name_down, None)
-
-        raise NotImplementedError
 
 
 ####################### BUILT WITH BaseConvolutionDown ############################

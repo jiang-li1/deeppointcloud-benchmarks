@@ -1,6 +1,4 @@
-import torch
 import torch.nn.functional as F
-from torch_geometric.nn import global_max_pool
 import logging
 
 from src.core.base_conv.base_conv import *
@@ -21,7 +19,6 @@ class PointNet(BaseModel):
             dataset.has_fixed_points_transform if hasattr(dataset, "has_fixed_points_transform") else False
         )
         self.pointnet_seg = PointNetSeg(**flatten_dict(opt))
-        log.info(self)
 
     def set_input(self, data):
         self.input = data

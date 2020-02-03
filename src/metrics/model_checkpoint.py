@@ -1,8 +1,4 @@
 import os
-from os import path as osp
-import tempfile
-import warnings
-import sys
 import torch
 import logging
 
@@ -18,15 +14,21 @@ DEFAULT_METRICS_FUNC = {
     "iou": max,
     "acc": max,
     "loss": min,
+    "mer": min,
 }  # Those map subsentences to their optimization functions
 
 
 def get_model_checkpoint(
-    model: BaseModel, load_dir: str, check_name: str, resume: bool = True, weight_name: str = None,
+    model: BaseModel,
+    load_dir: str,
+    check_name: str,
+    resume: bool = True,
+    weight_name: str = None,
+    selection_stage: str = "test",
 ):
     """ Loads a model from a checkpoint or creates a new one.
     """
-    model_checkpoint: ModelCheckpoint = ModelCheckpoint(load_dir, check_name, resume)
+    model_checkpoint: ModelCheckpoint = ModelCheckpoint(load_dir, check_name, resume, selection_stage)
 
     if resume:
         model_checkpoint.initialize_model(model, weight_name)
@@ -38,7 +40,6 @@ class Checkpoint(object):
 
     def __init__(self, check_name: str, save_every_iter: bool = True):
         """ Checkpoint manager. Saves to working directory with check_name
-
         Arguments
             check_name {str} -- name of the checkpoint
             save_every_iter {bool} -- [description] (default: {True})
@@ -70,6 +71,7 @@ class Checkpoint(object):
         ckp = Checkpoint(checkpoint_name)
         ckp._checkpoint_file = checkpoint_file
         if not os.path.exists(checkpoint_file):
+            log.warn("The provided path {} didn't contain a checkpoint_file".format(checkpoint_file))
             return ckp
         ckp._objects = torch.load(checkpoint_file)
         ckp._filled = True
@@ -126,9 +128,12 @@ class Checkpoint(object):
 
 
 class ModelCheckpoint(object):
-    def __init__(self, load_dir: str = None, check_name: str = None, resume: bool = True):
+    def __init__(
+        self, load_dir: str = None, check_name: str = None, resume: bool = True, selection_stage: str = "test"
+    ):
         self._checkpoint = Checkpoint.load(load_dir, check_name)
         self._resume = resume
+        self._selection_stage = selection_stage
 
     @property
     def start_epoch(self):
@@ -153,12 +158,13 @@ class ModelCheckpoint(object):
             if token_name in metric_name:
                 return func
         raise Exception(
-            'The metric name doesn t have a func to measure which one is best. Example: For best_train_iou, {"iou":max}'
+            'The metric name {} doesn t have a func to measure which one is best. Example: For best_train_iou, {"iou":max}'.format(
+                token_name
+            )
         )
 
     def save_best_models_under_current_metrics(self, model: BaseModel, metrics_holder: dict, **kwargs):
         """[This function is responsible to save checkpoint under the current metrics and their associated DEFAULT_METRICS_FUNC]
-
         Arguments:
             model {[BaseModel]} -- [Model]
             metrics_holder {[Dict]} -- [Need to contain stage, epoch, current_metrics]
@@ -194,7 +200,9 @@ class ModelCheckpoint(object):
                 current_stat["best_{}".format(metric_name)] = best_value
 
                 # This new value seems to be better under metric_func
-                if ("test" == stage) and (current_metric_value == best_value):  # Update the model weights
+                if (self._selection_stage == stage) and (
+                    current_metric_value == best_value
+                ):  # Update the model weights
                     models_to_save["best_{}".format(metric_name)] = state_dict
 
                     msg += "{}: {} -> {}, ".format(metric_name, best_metric_from_stats, best_value)
