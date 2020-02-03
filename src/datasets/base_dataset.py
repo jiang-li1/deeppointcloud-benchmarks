@@ -21,7 +21,11 @@ class BaseDataset:
         self.training_opt = training_opt
         self.strategies = {}
         self._torch_loader = training_opt.use_torch_loader
-        self._pre_transform = instantiate_transforms(dataset_opt.pre_transforms)
+
+        if 'pre_transforms' in dataset_opt:
+            self._pre_transform = instantiate_transforms(dataset_opt.pre_transforms)
+        else:
+            self._pre_transform = None
 
     def _create_dataloaders(self, train_dataset, test_dataset, val_dataset=None, train_sampler=None, test_sampler=None):
         """ Creates the data loaders. Must be called in order to complete the setup of the Dataset

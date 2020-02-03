@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import hydra
 import time
+import traceback
 import logging
 from omegaconf import OmegaConf
 
@@ -42,6 +43,7 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
             try:
                 model.optimize_parameters(dataset.batch_size)
             except Exception as e:
+                traceback.print_exc()
                 import pdb; pdb.set_trace()
 
             if i % 10 == 0:
@@ -83,7 +85,6 @@ def test_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoi
     model.eval()
     tracker.reset("test")
     loader = dataset.test_dataloader()
-    import pdb; pdb.set_trace()
     with Ctq(loader) as tq_test_loader:
         for data in tq_test_loader:
             data = data.to(device)
@@ -111,7 +112,7 @@ def run(cfg, model, dataset: BaseDataset, device, tracker: BaseTracker, checkpoi
 
     # Single test evaluation in resume case
     if checkpoint.start_epoch >= cfg.training.epochs:
-        test(model, dataset, device, tracker, checkpoint, log)
+        test_epoch(model, dataset, device, tracker, checkpoint, log)
 
 
 @hydra.main(config_path="conf/config.yaml")
@@ -124,7 +125,7 @@ def main(cfg):
     print("DEVICE : {}".format(device))
 
     # Get task and model_name
-    tested_task = cfg.data.task
+    tested_task = cfg.data.get('task', cfg.task)
     tested_model_name = cfg.model_name
 
     # Find and create associated model

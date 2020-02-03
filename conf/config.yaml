@@ -1,19 +1,16 @@
-# Those arguments within experiment defines which model, dataset and task to be created for benchmarking
-experiment:
-    model_name: pointnet2_original
-    checkpoint_dir: outputs/checkpoints
-    resume: True
-    task: segmentation
-    dataset: ahn_aerial
-    name: ahn_small #experiment name, used for saving outputs
+model_name: pointnet2_original # Name of the specific model to load
+model_type: pointnet2
+dataset: ahn_aerial
+task: segmentation
+experiment_name: ahn_small #experiment name, used for saving outputs
 
-    
+
 defaults:
-  - task: ??? # Task performed (segmentation, classification etc...)
+  - task: segmentation # Task performed (segmentation, classification etc...)
     optional: True
-  - model_type: ??? # Type of model to use, e.g. pointnet2, rsconv etc...
+  - model_type: pointnet2 # Type of model to use, e.g. pointnet2, rsconv etc...
     optional: True
-  - dataset: ???
+  - dataset: ahn_aerial
     optional: True
 
   - training
@@ -24,7 +21,7 @@ defaults:
   - sota # Contains current SOTA results on different datasets (extracted from papers !).
   - hydra/job_logging: custom
 
-model_name: pointnet2_original # Name of the specific model to load
+
 
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
 # parameters for Weights and Biases

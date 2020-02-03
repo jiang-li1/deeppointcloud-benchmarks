@@ -60,7 +60,7 @@ models:
         down_conv:
             module_name: PointNetMSGDown
             npoint: [1024, 256, 64, 16]
-            radii: [[0.05, 0.1], [0.1, 0.2], [0.2, 0.4], [0.4, 0.8]]
+            radii: [[0.05 * SCALE, 0.1 * SCALE], [0.1 * SCALE, 0.2 *SCALE], [0.2 * SCALE, 0.4 * SCALE], [0.4 * SCALE, 0.8 * SCALE]]
             nsamples: [[16, 32], [16, 32], [16, 32], [16, 32]]
             down_conv_nn:
                 [

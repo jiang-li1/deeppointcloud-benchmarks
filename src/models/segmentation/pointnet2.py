@@ -8,6 +8,7 @@ import logging
 from src.modules.pointnet2 import *
 from src.core.base_conv.dense import DenseFPModule
 from src.models.base_architectures import UnetBasedModel
+from src.core.losses.losses import FocalLoss
 from .base import Segmentation_MP
 
 log = logging.getLogger(__name__)
@@ -57,6 +58,8 @@ class PointNet2_D(UnetBasedModel):
         self.FC_layer.conv1d(self._num_classes, activation=None)
         self.loss_names = ["loss_seg"]
 
+        self.lossModule = FocalLoss()
+
     def set_input(self, data):
         """Unpack input data from the dataloader and perform necessary pre-processing steps.
         Parameters:
@@ -95,7 +98,8 @@ class PointNet2_D(UnetBasedModel):
         # calculate loss given the input and intermediate results
         if self._weight_classes is not None:
             self._weight_classes = self._weight_classes.to(self.output.device)
-        self.loss_seg = F.cross_entropy(self.output, self.labels, weight=self._weight_classes)
+        # self.loss_seg = F.cross_entropy(self.output, self.labels, weight=self._weight_classes)
+        self.loss_seg = self.lossModule(self.output, self.labels)
         self.loss_seg.backward()
 
 

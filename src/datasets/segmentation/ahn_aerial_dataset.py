@@ -144,10 +144,10 @@ class AHNAerialDataset(BaseDataset):
             self._create_dataloaders(
                 self.train_dataset,
                 self.test_dataset,
-                validation=None,
+                val_dataset=None,
             )
 
-        self.pointcloud_scale = 5
+        self.pointcloud_scale = dataset_opt.scale
 
     def _init_for_eval(self, dataset_opt, training_opt):
 
@@ -172,12 +172,12 @@ class AHNAerialDataset(BaseDataset):
 
     @property
     def class_num_to_name(self):
-        return AHNPointCloud.clasNumToName
+        return AHNPointCloud.clasNumToName()
 
     @property
     def class_to_segments(self):
         return {
-            k: [v] for k, v in AHNPointCloud.clasNameToNum.items()
+            k: [v] for k, v in AHNPointCloud.clasNameToNum().items()
         }
 
     @staticmethod

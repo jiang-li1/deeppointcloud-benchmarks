@@ -16,4 +16,4 @@ training:
     weight_name: "acc" # Used during resume, select with model to load from [miou, macc, acc..., latest]
     enable_cudnn: True
     checkpoint_dir: "outputs/checkpoints"
-    resume: True
+    resume: False
