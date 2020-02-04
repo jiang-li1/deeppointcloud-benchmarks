@@ -15,10 +15,10 @@ class RandlaKernel(MessagePassing):
 
     """
 
-    def __init__(self, point_pos_nn=None, attention_nn=None, global_nn=None, *args, **kwargs):
+    def __init__(self, rel_point_pos_nn=None, attention_nn=None, global_nn=None, *args, **kwargs):
         MessagePassing.__init__(self, aggr="add")
 
-        self.point_pos_nn = MLP(point_pos_nn)
+        self.rel_point_pos_nn = MLP(rel_point_pos_nn)
         self.attention_nn = MLP(attention_nn)
         self.global_nn = MLP(global_nn)
 

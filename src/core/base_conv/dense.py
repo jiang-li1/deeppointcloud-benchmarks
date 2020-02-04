@@ -30,6 +30,28 @@ from src.utils.model_building_utils.activation_resolver import get_activation
 #################### THOSE MODULES IMPLEMENTS THE BASE DENSE CONV API ############################
 
 
+class BaseDenseConvolutionFlat(BaseConvolution):
+    """ Convolution with no sampling (new_pos = pos)
+
+    """
+
+    CONV_TYPE = ConvolutionFormat.DENSE.value[-1]
+
+    def __init__(self, neighbour_finder: BaseMSNeighbourFinder, *args, **kwargs):
+        super().__init__(None, neighbour_finder)
+
+    def conv(self, x, pos, radius_idx):
+        raise NotImplementedError
+
+    def forward(self, data):
+        x, pos = data.x, data.pos
+
+        radius_idx = self.neighbour_finder(pos, pos)
+        new_x = self.conv(x, pos, radius_idx)
+
+        return Data(pos=pos, x=new_x)
+
+
 class BaseDenseConvolutionDown(BaseConvolution):
     """ Multiscale convolution down (also supports single scale). Convolution kernel is shared accross the scales
 
