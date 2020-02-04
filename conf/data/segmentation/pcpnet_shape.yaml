@@ -1,0 +1,5 @@
+data:
+    name: pcpnet_shape
+    dataroot: data
+    train_category: NoNoise
+    test_category: NoNoise

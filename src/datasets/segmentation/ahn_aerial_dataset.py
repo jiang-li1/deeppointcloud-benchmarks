@@ -1,18 +1,126 @@
 import os
 import os.path as osp
 import sys
+import itertools
+import functools
+import pathlib
 
 import torch
 from torch.utils.data import RandomSampler
-from torch_geometric.data import InMemoryDataset
+from torch_geometric.data import InMemoryDataset, Dataset
 
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
 sys.path.append(ROOT)
 
-from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset, FailSafeIterableDataset, UniqueRandomSampler, UniqueSequentialSampler
+from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset, FalibleDatasetWrapper, UniqueRandomSampler, UniqueSequentialSampler, BaseLargeMultiCloudPatchDataset
 from src.datasets.base_dataset import BaseDataset
 from src.metrics.ahn_tracker import AHNTracker
+from src.datasets.utils.downloader import download_url
+from src.datasets.utils.las_splitter import split_las_pointcloud
 from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
+
+class AHNSubTileDataset(Dataset):
+    '''Dataset backed by a set of tiles from AHN, which exposes 
+    each tile as a set of sub-tiles. __len__ returns the number 
+    of subtiles, and get(idx) returns the idx^th subtile. 
+
+        Download tile from pdok
+                |
+                v
+        Split into subtiles using LAStools
+                |
+                v
+        Use AHNPointCloud class to process each subtile
+        and convert it into a torch Data object
+    '''
+
+    train_tiles = [
+        '38FN1',
+        '31HZ2',
+    ]
+
+    test_tiles = [
+        '32CN1',
+        '37EN2',
+    ]
+
+    num_subtiles = 16 #num_subtiles^0.5 must be an integer
+
+    def __init__(self, root, split, transform=None, pre_transform=None, pre_filter=None):
+        self.split = split
+        super().__init__(root, transform, pre_transform, pre_filter)
+
+    @property
+    def raw_file_names(self):
+        if self.split == 'train':
+            return self.get_subtile_names(self.train_tiles, 'LAZ')
+        elif self.split == 'test':
+            return self.get_subtile_names(self.test_tiles, 'LAZ')
+        else:
+            raise ValueError('Split {} not recognized'.format(self.split))
+
+    # @property
+    # def processed_file_names(self):
+    #     return ['{}_num_subtiles={}_data.pt'.format(
+    #         '_'.join(self.raw_file_names),
+    #         self.num_subtiles
+    #     )]
+
+    @property
+    def processed_file_names(self):
+        if self.split == 'train':
+            return self.get_subtile_names(self.train_tiles, 'pt')
+        elif self.split == 'test':
+            return self.get_subtile_names(self.test_tiles, 'pt')
+        else:
+            raise ValueError('Split {} not recognized'.format(self.split))
+
+    def __len__(self):
+        return len(self.processed_file_names)
+
+    def get(self, idx):
+        data = torch.load(self.processed_paths[idx])
+        return data
+
+    def download(self):
+        url = 'https://geodata.nationaalgeoregister.nl/ahn3/extract/ahn3_laz/C_{}.LAZ'
+
+        tilesList = self.train_tiles if self.split == 'train' else self.test_tiles
+
+        for tilename in tilesList:
+            filename = download_url(url.format(tilename), self.root + '/tiles/')
+            split_las_pointcloud(filename, self.num_subtiles, self.root + '/raw/')
+
+
+    def process(self):
+        # data_list = []
+
+        for raw_path, processed_path in zip(self.raw_paths, self.processed_paths):
+
+            print('Converting laz to torch.data: {} -> {}'.format(raw_path, processed_path))
+
+            if osp.exists(processed_path):
+                print('{} exists. skipping conversion'.format(processed_path))
+            else:
+                pcd = AHNPointCloud.from_cloud(raw_path)
+                torch.save(pcd.to_torch_data(), processed_path)
+
+        # for raw_path in self.raw_paths:
+        #     pcd = AHNPointCloud.from_cloud(raw_path)
+        #     # tracker.print_diff()
+        #     data_list.append(pcd.to_torch_data())
+        #     del pcd
+        #     gc.collect()
+
+
+        # torch.save(self.collate(data_list), self.processed_paths[0])
+
+
+    def get_subtile_names(self, tile_names, suffix):
+        return list(itertools.chain(*[
+            ['C_' + tn + '_{}.{}'.format(i, suffix) for i in range(self.num_subtiles)]
+            for tn in tile_names
+        ]))
 
 class AHNTilesDataset(InMemoryDataset):
 
@@ -82,12 +190,49 @@ class AHNPatchDataset(Grid2DPatchDataset):
 
 class AHNMultiCloudPatchDataset(BaseMultiCloudPatchDataset):
 
-    def __init__(self, backingDataset, patch_opt):
-        super().__init__([
+    def __init__(self, patchDatasets):
+        super().__init__(patchDatasets)
+
+        self.num_classes = 5
+
+    @classmethod
+    def from_backing_dataset(cls, backingDataset, patch_opt):
+        return cls([
             AHNPatchDataset(data, **patch_opt) for data in backingDataset
         ])
 
-        self.num_classes = 5
+
+class AHNLargeMultiCloudPatchDataset(BaseLargeMultiCloudPatchDataset):
+
+    def __init__(self, root, split, dataset_opt):
+        def make_patch_dataset(data: torch.utils.data.Data) -> AHNPatchDataset:
+            return AHNPatchDataset(data, **dataset_opt.patch_opt)
+
+        def make_mc_patch_dataset(patchDatasets: List[AHNPatchDataset]) -> BaseMultiCloudPatchDataset:
+            mcpd = BaseMultiCloudPatchDataset
+            mcpd.num_classes = 5
+            return mcpd
+
+        super().__init__(
+            AHNSubTileDataset(root, split),
+            make_mc_patch_dataset,
+            make_patch_dataset,
+            dataset_opt.samples_per_subtile,
+            dataset_opt.num_loaded_subtiles,
+        )
+
+        
+
+
+class AHNPaperDataset(BaseDataset):
+
+    def __init__(self, dataset_opt, training_opt, eval_mode=False):
+        super().__init__(dataset_opt, training_opt)
+        self._data_path = osp.join(ROOT, dataset_opt.dataroot, "AHNSubTilesDataset")
+
+        train_patch_dataset = AHNLargeMultiCloudPatchDataset(self._data_path, 'train', dataset_opt)
+
+        self.train_dataset
 
 
 class AHNAerialDataset(BaseDataset):
@@ -100,11 +245,11 @@ class AHNAerialDataset(BaseDataset):
             self._init_for_eval(dataset_opt, training_opt)
         else:
 
-            train_patch_dataset = AHNMultiCloudPatchDataset(
+            train_patch_dataset = AHNMultiCloudPatchDataset.from_backing_dataset(
                 AHNTilesDataset(self._data_path, "train"),
                 dataset_opt.patch_opt,
             )
-            self.train_dataset = FailSafeIterableDataset(
+            self.train_dataset = FalibleDatasetWrapper(
                 train_patch_dataset,
                 UniqueRandomSampler(
                     train_patch_dataset,
@@ -112,11 +257,11 @@ class AHNAerialDataset(BaseDataset):
                     num_samples=100//training_opt.num_workers, #sample ~100 patches in total per epoch
                 )
             )
-            test_patch_dataset = AHNMultiCloudPatchDataset(
+            test_patch_dataset = AHNMultiCloudPatchDataset.from_backing_dataset(
                 AHNTilesDataset(self._data_path, "test"),
                 dataset_opt.patch_opt,
             )
-            self.test_dataset = FailSafeIterableDataset(
+            self.test_dataset = FalibleDatasetWrapper(
                 test_patch_dataset,
                 UniqueRandomSampler(
                     test_patch_dataset,
@@ -156,7 +301,7 @@ class AHNAerialDataset(BaseDataset):
             **dataset_opt.patch_opt,
             eval_mode=True,
         )
-        self.test_dataset = FailSafeIterableDataset(
+        self.test_dataset = FalibleDatasetWrapper(
             test_patch_dataset,
             UniqueSequentialSampler(
                 training_opt.num_workers,
@@ -192,5 +337,10 @@ class AHNAerialDataset(BaseDataset):
             [BaseTracker] -- tracker
         """
         return AHNTracker(dataset, wandb_log=wandb_opt.log, use_tensorboard=tensorboard_opt.log)
+
+def _test():
+    data_path = osp.join(ROOT, 'data', "AHNSubTilesDataset")
+    d = AHNSubTileDataset(data_path, 'train')
+    return d
 
 

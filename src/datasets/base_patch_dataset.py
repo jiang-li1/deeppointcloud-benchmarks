@@ -1,12 +1,13 @@
 
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import Optional, List, Callable
 import math
 import hashlib
 
 import torch
 from torch_geometric.data import InMemoryDataset, Data, Dataset
 from overrides import overrides
+import numpy as np
 
 from src.datasets.base_dataset import BaseDataset
 # from utils.pointcloud_utils import build_kdtree
@@ -94,6 +95,55 @@ class BasePointCloudPatchDataset(torch.utils.data.Dataset, PointCloud, ABC):
     def num_features(self):
         return self.data.x.shape[1]
 
+    def __len__(self):
+        raise NotImplementedError()
+
+    def __getitem__(self, index):
+        raise NotImplementedError()
+
+# class BaseLazyPointCloudPatchDataset(torch.utils.data.Dataset, PointCloud, ABC):
+#     '''Acts like BasePointCloudPatchDataset, with data = dataset[idx], except that
+#     data will only be loaded when required. This supports large datasets which 
+#     cannot fit into memory. 
+
+#     '''
+
+#     def __init__(self, dataset: torch.utils.data.Dataset, idx):
+#         self._dataset = dataset
+#         self._idx = idx 
+#         self._data = None
+
+#     def load(self):
+#         self._data = self._dataset[self._idx]
+
+#     def unload(self):
+#         self._data = None
+
+#     @property
+#     def pos(self) -> torch.tensor:
+#         return self.data.pos
+
+#     @property
+#     def features(self) -> torch.tensor:
+#         return self.data.features
+
+#     @property
+#     def data(self) -> Data:
+#         if self._data is None:
+#             self.load()
+#         return self._data
+
+#     @property
+#     def num_features(self):
+#         return self.data.x.shape[1]
+
+#     def __len__(self):
+#         raise NotImplementedError()
+
+#     def __getitem__(self, index):
+#         raise NotImplementedError()
+
+
 
 class BaseMultiCloudPatchDataset(ABC, torch.utils.data.Dataset):
     '''Class representing datasets over multiple patchable pointclouds. 
@@ -102,11 +152,11 @@ class BaseMultiCloudPatchDataset(ABC, torch.utils.data.Dataset):
     '''
 
     def __init__(self, patchDatasets: List[BasePointCloudPatchDataset]):
-        self._patchDataset = patchDatasets
+        self._patchDatasets = patchDatasets
 
     @property
     def patch_datasets(self) -> List[BasePointCloudPatchDataset]:
-        return self._patchDataset
+        return self._patchDatasets
 
     @property
     def num_features(self):
@@ -123,7 +173,49 @@ class BaseMultiCloudPatchDataset(ABC, torch.utils.data.Dataset):
             if idx < i + len(pds):
                 return pds[idx - i]
             i += len(pds)
-    
+
+class BaseLargeMultiCloudPatchDataset(ABC, torch.utils.data.IterableDataset):
+    '''like BaseMultiCloudPatchDatasets, but for datasets that are too large to fit in memory''' 
+
+    def __init__(self, 
+        dataset: torch.utils.data.Dataset, 
+        mc_patch_dataset_maker: Callable[[List[BasePointCloudPatchDataset]], BaseMultiCloudPatchDataset],
+        patch_dataset_maker: Callable[[Data], BasePointCloudPatchDataset],
+        samples_per_dataset = 10,
+        num_loaded_datasets = 4
+    ):
+        self._dataset = dataset
+        self._patch_dataset_maker = patch_dataset_maker
+        self._mc_patch_dataset_maker = mc_patch_dataset_maker
+        self._samples_per_dataset = samples_per_dataset
+        self._num_loaded_datasets = num_loaded_datasets
+
+        self._num_samples_taken = 0
+        self._mc_patch_dataset = None
+
+    @overrides
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._num_samples_taken > self._samples_per_dataset * self._num_loaded_datasets:
+            self.cycle()
+
+        idx = np.random.choice(len(self._mc_patch_dataset))
+        return self._mc_patch_dataset[idx]
+
+    def cycle(self):
+        self._mc_patch_dataset = self._mc_patch_dataset_maker([
+            self._patch_dataset_maker(self._dataset[idx]) 
+            for idx in np.random.choice(
+                len(self._dataset),
+                size=self._num_loaded_datasets,
+                replace=False,
+            )
+        ])
+        self._num_samples_taken = 0
+
+
 
 class BasePointCloudDataset(ABC):
 
@@ -314,14 +406,38 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
 
         return torch.arange(pts.shape[0])[mask]
 
+class FalibleIterDatasetWrapper(torch.utils.data.IterableDataset):
 
-class FailSafeIterableDataset(torch.utils.data.IterableDataset):
+    def __init__(self, dataset: torch.utils.data.IterableDataset):
+        self._dataset = dataset
+        self._max_retries = 10
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+
+        for _ in range(self._max_retries):
+            try:
+                return next(self._dataset)
+            except BadDataException as e:
+                continue
+
+        raise BadDataException("Dataset returned BadDataException more times than _max_retries")
+
+    #forward all attribute calls to the underlying dataset
+    #(e.g. num_features)
+    def __getattr__(self, name):
+        return getattr(self._dataset, name)
+
+
+class FalibleDatasetWrapper(torch.utils.data.IterableDataset):
     '''Creates an IterableDataset around an ordinary map-style dataset
     where some indicies point to bad data. For example a patch dataset
     where some patches are empty. 
 
     The underlying dataset should throw BadDataException to indicate
-    that the index is bad. FailSafeIterableDataset will try retry 
+    that the index is bad. FalibleDatasetWrapper will try retry 
     up to max_retries times to fetch an item from the dataset. 
 
     '''
