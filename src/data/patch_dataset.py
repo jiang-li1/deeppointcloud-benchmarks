@@ -10,6 +10,8 @@ import numpy as np
 
 from src.data.base_dataset import BaseDataset
 from src.data.base_patchable_pointcloud import BasePatchablePointCloud
+from src.data.falible_dataset import FalibleDatasetWrapper
+from src.data.sampler import unique_random_index
 
 
 class PatchDataset(torch.utils.data.Dataset):
@@ -46,7 +48,7 @@ class PatchDataset(torch.utils.data.Dataset):
     def __getattr__(self, name):
         return getattr(self.patchable_clouds[0], name)
 
-class LargePatchDatase(torch.utils.data.IterableDataset):
+class LargePatchDataset(torch.utils.data.IterableDataset):
     '''like BaseMultiCloudPatchDatasets, but for datasets that are too large to fit in memory''' 
 
     def __init__(self, 
@@ -72,13 +74,13 @@ class LargePatchDatase(torch.utils.data.IterableDataset):
         if self._num_samples_taken > self._samples_per_dataset * self._num_loaded_datasets:
             self.cycle()
 
-        idx = np.random.choice(len(self._mc_patch_dataset))
-        return self._mc_patch_dataset[idx]
+        idx = unique_random_index(len(self._patch_dataset))
+        return self._patch_dataset[idx]
 
     #forward all attribute calls to the underlying datasets
     #(e.g. num_features)
     def __getattr__(self, name):
-        return getattr(self.patchable_clouds[0], name)
+        return getattr(self._patch_dataset, name)
 
     def cycle(self):
         patchableCloudIndexes = np.random.choice(
@@ -88,7 +90,7 @@ class LargePatchDatase(torch.utils.data.IterableDataset):
         )
 
         self._patch_dataset = PatchDataset([
-            self._make_patchable_cloud(self._dataset[idx]) 
+            self._make_patchable_cloud(self._backing_dataset[idx]) 
             for idx in patchableCloudIndexes
         ])
         self._num_samples_taken = 0

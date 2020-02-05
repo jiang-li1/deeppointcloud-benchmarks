@@ -18,7 +18,7 @@ from omegaconf.listconfig import ListConfig
 from omegaconf.dictconfig import DictConfig
 import logging
 
-from src.datasets.base_dataset import BaseDataset
+from src.data.base_dataset import BaseDataset
 from src.models.base_model import BaseModel
 from src.core.common_modules.base_modules import Identity
 from src.utils.config import is_list

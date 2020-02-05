@@ -35,6 +35,9 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
 
             data = data.to(device)  # This takes time
 
+            # print(data.pos[0][0])
+            # import pdb; pdb.set_trace()
+
             model.set_input(data)
             t_data = time.time() - iter_data_time
 

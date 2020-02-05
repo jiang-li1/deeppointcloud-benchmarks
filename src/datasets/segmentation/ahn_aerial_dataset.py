@@ -6,15 +6,17 @@ import functools
 import pathlib
 
 import torch
+import torch_geometric
 from torch.utils.data import RandomSampler
 from torch_geometric.data import InMemoryDataset, Dataset
 
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
 sys.path.append(ROOT)
 
-from src.data.patch_dataset import PatchDataset, LargePatchDatase
+from src.data.patch_dataset import PatchDataset, LargePatchDataset
 from src.data.grid2D_patchable_cloud import Grid2DPatchableCloud
-from src.data.falible_dataset import FalibleDatasetWrapper, UniqueRandomSampler, UniqueSequentialSampler
+from src.data.falible_dataset import FalibleDatasetWrapper, FalibleIterDatasetWrapper
+from src.data.sampler import UniqueRandomSampler, UniqueSequentialSampler
 from src.data.base_dataset import BaseDataset
 
 from src.metrics.ahn_tracker import AHNTracker
@@ -44,7 +46,7 @@ class AHNSubTileDataset(Dataset):
         '31HZ2',
     ]
 
-    test_tiles = [
+    x = [
         '32CN1',
         '37EN2',
     ]
@@ -84,6 +86,7 @@ class AHNSubTileDataset(Dataset):
         return len(self.processed_file_names)
 
     def get(self, idx):
+        print('loading file:', self.processed_paths[idx])
         data = torch.load(self.processed_paths[idx])
         return data
 
@@ -227,7 +230,7 @@ class AHNGridPatchableCloud(Grid2DPatchableCloud):
 #         )
 
 
-class AHNPaperDataset(BaseDataset):
+class AHNAerialDataset(BaseDataset):
 
     def __init__(self, dataset_opt, training_opt, eval_mode=False):
         super().__init__(dataset_opt, training_opt)
@@ -237,16 +240,54 @@ class AHNPaperDataset(BaseDataset):
             return AHNGridPatchableCloud(data, **dataset_opt.patch_opt)
 
         train_tiles_dataset = AHNSubTileDataset(self._data_path, "train")
-        train_patch_dataset = LargePatchDatase(
+        train_patch_dataset = LargePatchDataset(
             train_tiles_dataset,
             make_patchable_cloud,
+            num_loaded_datasets=1,
         )
-        train_patch_dataset = (self._data_path, 'train', dataset_opt)
+        self.train_dataset = FalibleIterDatasetWrapper(train_patch_dataset, 100//training_opt.num_workers)
 
-        self.train_dataset
+        test_tiles_dataset = AHNSubTileDataset(self._data_path, "train")
+        test_patch_dataset = LargePatchDataset(
+            test_tiles_dataset,
+            make_patchable_cloud,
+            num_loaded_datasets=1,
+        )
+        self.test_dataset = FalibleIterDatasetWrapper(test_patch_dataset, 50//training_opt.num_workers)
+
+        self.pointcloud_scale = dataset_opt.scale
+
+        self._create_dataloaders(
+            self.train_dataset,
+            self.test_dataset,
+            val_dataset=None,
+        )
+
+    @property
+    def class_num_to_name(self):
+        return AHNPointCloud.clasNumToName()
+
+    @property
+    def class_to_segments(self):
+        return {
+            k: [v] for k, v in AHNPointCloud.clasNameToNum().items()
+        }
+
+    @staticmethod
+    def get_tracker(model, task: str, dataset, wandb_opt: bool, tensorboard_opt: bool):
+        """Factory method for the tracker
+
+        Arguments:
+            task {str} -- task description
+            dataset {[type]}
+            wandb_log - Log using weight and biases
+        Returns:
+            [BaseTracker] -- tracker
+        """
+        return AHNTracker(dataset, wandb_log=wandb_opt.log, use_tensorboard=tensorboard_opt.log)
 
 
-class AHNAerialDataset(BaseDataset):
+class AHNSmallDataset(BaseDataset):
 
     def __init__(self, dataset_opt, training_opt, eval_mode=False):
         super().__init__(dataset_opt, training_opt)
@@ -268,8 +309,7 @@ class AHNAerialDataset(BaseDataset):
                     num_samples=100//training_opt.num_workers, #sample ~100 patches in total per epoch
                 )
             )
-
-            test_tiles_dataset = AHNTilesDataset(self._data_path, "test"),
+            test_tiles_dataset = AHNTilesDataset(self._data_path, "test")
             test_patch_dataset = PatchDataset(
                 [AHNGridPatchableCloud(d, **dataset_opt.patch_opt) for d in test_tiles_dataset]
             )
