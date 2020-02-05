@@ -12,11 +12,16 @@ from torch_geometric.data import InMemoryDataset, Dataset
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
 sys.path.append(ROOT)
 
-from src.datasets.base_patch_dataset import Grid2DPatchDataset, BaseMultiCloudPatchDataset, FalibleDatasetWrapper, UniqueRandomSampler, UniqueSequentialSampler, BaseLargeMultiCloudPatchDataset
-from src.datasets.base_dataset import BaseDataset
+from src.data.patch_dataset import PatchDataset, LargePatchDatase
+from src.data.grid2D_patchable_cloud import Grid2DPatchableCloud
+from src.data.falible_dataset import FalibleDatasetWrapper, UniqueRandomSampler, UniqueSequentialSampler
+from src.data.base_dataset import BaseDataset
+
 from src.metrics.ahn_tracker import AHNTracker
+
 from src.datasets.utils.downloader import download_url
 from src.datasets.utils.las_splitter import split_las_pointcloud
+
 from utils.custom_datasets.ahn_pointcloud import AHNPointCloud
 
 class AHNSubTileDataset(Dataset):
@@ -176,10 +181,10 @@ class AHNTilesDataset(InMemoryDataset):
 
         torch.save(self.collate(data_list), self.processed_paths[0])
 
-class AHNPatchDataset(Grid2DPatchDataset):
+class AHNGridPatchableCloud(Grid2DPatchableCloud):
 
-    def __init__(self, data, patch_diam=10, context_dist=0.3, *args, **kwargs):
-        super().__init__(data, patch_diam, patch_diam, context_dist, *args, **kwargs)
+    def __init__(self, data, patch_diam=10, context_dist=0.3, eval_mode=False, *args, **kwargs):
+        super().__init__(data, patch_diam, patch_diam, context_dist, eval_mode, *args, **kwargs)
 
         self.num_classes = 5
 
@@ -188,40 +193,38 @@ class AHNPatchDataset(Grid2DPatchDataset):
         assert len(dataset) == 1
         return cls(dataset[0], **kwargs)
 
-class AHNMultiCloudPatchDataset(BaseMultiCloudPatchDataset):
+# class AHNMultiCloudPatchDataset(BaseMultiCloudPatchDataset):
 
-    def __init__(self, patchDatasets):
-        super().__init__(patchDatasets)
+#     def __init__(self, patchDatasets):
+#         super().__init__(patchDatasets)
 
-        self.num_classes = 5
+#         self.num_classes = 5
 
-    @classmethod
-    def from_backing_dataset(cls, backingDataset, patch_opt):
-        return cls([
-            AHNPatchDataset(data, **patch_opt) for data in backingDataset
-        ])
+#     @classmethod
+#     def from_backing_dataset(cls, backingDataset, patch_opt):
+#         return cls([
+#             AHNPatchDataset(data, **patch_opt) for data in backingDataset
+#         ])
 
 
-class AHNLargeMultiCloudPatchDataset(BaseLargeMultiCloudPatchDataset):
+# class AHNLargeMultiCloudPatchDataset(BaseLargeMultiCloudPatchDataset):
 
-    def __init__(self, root, split, dataset_opt):
-        def make_patch_dataset(data: torch.utils.data.Data) -> AHNPatchDataset:
-            return AHNPatchDataset(data, **dataset_opt.patch_opt)
+#     def __init__(self, root, split, dataset_opt):
+#         def make_patch_dataset(data: torch.utils.data.Data) -> AHNPatchDataset:
+#             return AHNPatchDataset(data, **dataset_opt.patch_opt)
 
-        def make_mc_patch_dataset(patchDatasets: List[AHNPatchDataset]) -> BaseMultiCloudPatchDataset:
-            mcpd = BaseMultiCloudPatchDataset
-            mcpd.num_classes = 5
-            return mcpd
+#         def make_mc_patch_dataset(patchDatasets: List[AHNPatchDataset]) -> BaseMultiCloudPatchDataset:
+#             mcpd = BaseMultiCloudPatchDataset
+#             mcpd.num_classes = 5
+#             return mcpd
 
-        super().__init__(
-            AHNSubTileDataset(root, split),
-            make_mc_patch_dataset,
-            make_patch_dataset,
-            dataset_opt.samples_per_subtile,
-            dataset_opt.num_loaded_subtiles,
-        )
-
-        
+#         super().__init__(
+#             AHNSubTileDataset(root, split),
+#             make_mc_patch_dataset,
+#             make_patch_dataset,
+#             dataset_opt.samples_per_subtile,
+#             dataset_opt.num_loaded_subtiles,
+#         )
 
 
 class AHNPaperDataset(BaseDataset):
@@ -230,7 +233,15 @@ class AHNPaperDataset(BaseDataset):
         super().__init__(dataset_opt, training_opt)
         self._data_path = osp.join(ROOT, dataset_opt.dataroot, "AHNSubTilesDataset")
 
-        train_patch_dataset = AHNLargeMultiCloudPatchDataset(self._data_path, 'train', dataset_opt)
+        def make_patchable_cloud(data: torch_geometric.data.Data) -> AHNGridPatchableCloud:
+            return AHNGridPatchableCloud(data, **dataset_opt.patch_opt)
+
+        train_tiles_dataset = AHNSubTileDataset(self._data_path, "train")
+        train_patch_dataset = LargePatchDatase(
+            train_tiles_dataset,
+            make_patchable_cloud,
+        )
+        train_patch_dataset = (self._data_path, 'train', dataset_opt)
 
         self.train_dataset
 
@@ -245,9 +256,9 @@ class AHNAerialDataset(BaseDataset):
             self._init_for_eval(dataset_opt, training_opt)
         else:
 
-            train_patch_dataset = AHNMultiCloudPatchDataset.from_backing_dataset(
-                AHNTilesDataset(self._data_path, "train"),
-                dataset_opt.patch_opt,
+            train_tiles_dataset = AHNTilesDataset(self._data_path, "train")
+            train_patch_dataset = PatchDataset(
+                [AHNGridPatchableCloud(d, **dataset_opt.patch_opt) for d in train_tiles_dataset]
             )
             self.train_dataset = FalibleDatasetWrapper(
                 train_patch_dataset,
@@ -257,9 +268,10 @@ class AHNAerialDataset(BaseDataset):
                     num_samples=100//training_opt.num_workers, #sample ~100 patches in total per epoch
                 )
             )
-            test_patch_dataset = AHNMultiCloudPatchDataset.from_backing_dataset(
-                AHNTilesDataset(self._data_path, "test"),
-                dataset_opt.patch_opt,
+
+            test_tiles_dataset = AHNTilesDataset(self._data_path, "test"),
+            test_patch_dataset = PatchDataset(
+                [AHNGridPatchableCloud(d, **dataset_opt.patch_opt) for d in test_tiles_dataset]
             )
             self.test_dataset = FalibleDatasetWrapper(
                 test_patch_dataset,
@@ -296,10 +308,10 @@ class AHNAerialDataset(BaseDataset):
 
     def _init_for_eval(self, dataset_opt, training_opt):
 
-        test_patch_dataset = AHNPatchDataset.from_tiles_dataset(
-            AHNTilesDataset(self._data_path, "eval"),
-            **dataset_opt.patch_opt,
-            eval_mode=True,
+        test_tiles_dataset = AHNTilesDataset(self._data_path, "eval")
+        test_patch_dataset = PatchDataset(
+            [AHNGridPatchableCloud(test_tiles_dataset, **dataset_opt.patch_opt, eval_mode=True) for d in test_tiles_dataset]
+
         )
         self.test_dataset = FalibleDatasetWrapper(
             test_patch_dataset,
