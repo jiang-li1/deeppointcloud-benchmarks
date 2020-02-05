@@ -75,8 +75,8 @@ class ClassifiedPointCloud(PointCloud):
         return self._classes
 
 
-class BasePointCloudPatchDataset(torch.utils.data.Dataset, PointCloud, ABC):
-    '''ABC for classes which generate patches from a single pointcloud
+class BasePatchDataset(torch.utils.data.Dataset, PointCloud, ABC):
+    '''ABC for classes which generate patches from a single pointcloud.
 
     PointCloudPatchDatasets should be backed by a torch_geometric.data.Data object 
     with non-None pos, this is the original pointcloud which will be sampled 
@@ -99,6 +99,14 @@ class BasePointCloudPatchDataset(torch.utils.data.Dataset, PointCloud, ABC):
         raise NotImplementedError()
 
     def __getitem__(self, index):
+        raise NotImplementedError()
+
+class BaseIterablePatchDataset(torch.utils.data.IterableDataset, PointCloud, ABC):
+    '''ABC for classes which generate patches from a single pointcloud
+    
+    '''
+
+    def __init__(self, data: Data):
         raise NotImplementedError()
 
 # class BaseLazyPointCloudPatchDataset(torch.utils.data.Dataset, PointCloud, ABC):
@@ -145,17 +153,21 @@ class BasePointCloudPatchDataset(torch.utils.data.Dataset, PointCloud, ABC):
 
 
 
-class BaseMultiCloudPatchDataset(ABC, torch.utils.data.Dataset):
+class PatchDatasetManager(ABC, torch.utils.data.Dataset):
     '''Class representing datasets over multiple patchable pointclouds. 
 
     This class basically forwards methods to the underlying list of patch datasets
+
+    A dataset will usually consist of multiple pointclouds, each of which must be sampled
+    as patches. Each pointcloud is represented by a BasePatchDataset. This class provides 
+    an interface to a list of BasePatchDatasets
     '''
 
-    def __init__(self, patchDatasets: List[BasePointCloudPatchDataset]):
+    def __init__(self, patchDatasets: List[BasePatchDataset]):
         self._patchDatasets = patchDatasets
 
     @property
-    def patch_datasets(self) -> List[BasePointCloudPatchDataset]:
+    def patch_datasets(self) -> List[BasePatchDataset]:
         return self._patchDatasets
 
     @property
@@ -174,7 +186,7 @@ class BaseMultiCloudPatchDataset(ABC, torch.utils.data.Dataset):
                 return pds[idx - i]
             i += len(pds)
 
-class BaseLargeMultiCloudPatchDataset(ABC, torch.utils.data.IterableDataset):
+class LargePatchDatasetManager(ABC, torch.utils.data.IterableDataset):
     '''like BaseMultiCloudPatchDatasets, but for datasets that are too large to fit in memory''' 
 
     def __init__(self, 
