@@ -1,7 +1,7 @@
 data:
     name: ahn_aerial
     dataroot: data
-    scale: 6
+    scale: 10
     patch_opt:
-        patch_diam: 15
-        context_dist: 1
+        patch_diam: 30
+        context_dist: 2
