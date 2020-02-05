@@ -8,7 +8,7 @@ class PointCloud():
 
     '''
 
-    def __init__(self, pos: torch.tensor, features: torch.tensor = torch.tensor()):
+    def __init__(self, pos: torch.tensor, features: torch.tensor = torch.tensor([])):
         self._pos = pos
         self._features = features
         self._minPoint = None

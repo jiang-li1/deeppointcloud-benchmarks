@@ -1,5 +1,5 @@
 import importlib
-from src.datasets.base_dataset import BaseDataset
+from src.data.base_dataset import BaseDataset
 from src.models.base_model import BaseModel
 
 

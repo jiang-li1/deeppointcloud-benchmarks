@@ -11,7 +11,7 @@ from src import find_model_using_name, find_dataset_using_name
 
 # Import BaseModel / BaseDataset for type checking
 from src.models.base_model import BaseModel
-from src.datasets.base_dataset import BaseDataset
+from src.data.base_dataset import BaseDataset
 
 # Import from metrics
 from src.metrics.base_tracker import BaseTracker

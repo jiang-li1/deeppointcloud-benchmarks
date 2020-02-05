@@ -12,7 +12,7 @@ import torch_geometric.transforms as T
 from src.metrics.shapenet_part_tracker import ShapenetPartTracker
 from src.core.data_transform.transforms import RandomNoise
 
-from src.datasets.base_dataset import BaseDataset
+from src.data.base_dataset import BaseDataset
 
 
 class ShapeNet(InMemoryDataset):

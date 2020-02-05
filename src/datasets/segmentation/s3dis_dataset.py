@@ -17,7 +17,7 @@ import csv
 from src.metrics.segmentation_tracker import SegmentationTracker
 import src.core.data_transform.transforms as cT
 
-from src.datasets.base_dataset import BaseDataset
+from src.data.base_dataset import BaseDataset
 
 
 log = logging.getLogger(__name__)

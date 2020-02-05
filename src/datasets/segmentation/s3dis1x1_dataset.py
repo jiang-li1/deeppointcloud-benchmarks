@@ -8,7 +8,7 @@ import torch_geometric.transforms as T
 from src.metrics.segmentation_tracker import SegmentationTracker
 import src.core.data_transform.transforms as cT
 
-from src.datasets.base_dataset import BaseDataset
+from src.data.base_dataset import BaseDataset
 
 
 class S3DIS_With_Weights(S3DIS):
