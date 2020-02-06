@@ -11,7 +11,7 @@ import numpy as np
 from src.data.base_dataset import BaseDataset
 from src.data.patch.base_patchable_pointcloud import BasePatchablePointCloud
 from src.data.falible_dataset import FalibleDatasetWrapper
-from src.data.sampler import unique_random_index
+from src.data.sampler import unique_random_index, epoch_unique_random_seed
 
 
 class PatchDataset(torch.utils.data.Dataset):
@@ -55,22 +55,27 @@ class PartialPatchDataset(torch.utils.data.Dataset):
         backing_dataset: torch.utils.data.Dataset, 
         make_patchable_cloud: Callable[[Data], BasePatchablePointCloud],
         samples_per_dataset = 10,
-        num_loaded_datasets = 4
+        datasets_per_worker = 2
     ):
         self._backing_dataset = backing_dataset
         self._make_patchable_cloud = make_patchable_cloud
         self._samples_per_dataset = samples_per_dataset
-        self._num_loaded_datasets = num_loaded_datasets
+        self._num_loaded_datasets = datasets_per_worker
 
         self._patch_dataset = None
         self._index_sequence = []
-        self._load()
+        # self._load()
+
+        self.num_classes = 5
+        self.num_features = 3
 
     def __len__(self):
-        return len(self._index_sequence)
+        return self._samples_per_dataset * self._num_loaded_datasets
 
     @overrides
     def __getitem__(self, idx):
+        if self._patch_dataset is None:
+            self._load()
         return self._patch_dataset[self._index_sequence[idx]]
 
 
@@ -88,6 +93,8 @@ class PartialPatchDataset(torch.utils.data.Dataset):
         return getattr(self._patch_dataset, name)
 
     def _load(self):
+        s = epoch_unique_random_seed() % 2**31
+        np.random.seed(s)
         patchableCloudIndexes = np.random.choice(
                 len(self._backing_dataset),
                 size=self._num_loaded_datasets,
@@ -104,9 +111,10 @@ class PartialPatchDataset(torch.utils.data.Dataset):
             self._samples_per_dataset * self._num_loaded_datasets,
             replace=False
         )
-        
+
     def reset(self):
-        self._load()
+        # self._load()
+        pass
 
 
 

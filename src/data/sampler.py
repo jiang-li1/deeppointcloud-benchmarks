@@ -4,6 +4,7 @@ import hashlib
 import torch
 import numpy as np
 from overrides import overrides
+import time
 
 def unique_random_index(length):
     worker_info = torch.utils.data.get_worker_info()
@@ -20,6 +21,26 @@ def unique_random_index(length):
             16
         )           
         return (r + offset) % length
+
+def epoch_unique_random_seed():
+    worker_info = torch.utils.data.get_worker_info()
+
+    r = torch.initial_seed() + int(time.time() * 1e6)
+
+    if worker_info is None:
+        return r 
+    else:
+        return _hash_int(r + worker_info.id)
+
+def _hash_int(i):
+    return int(
+        hashlib.md5(
+            str(i).encode()
+        ).hexdigest(),
+        16
+    )           
+
+
 
 class UniqueSequentialSampler(torch.utils.data.SequentialSampler):
     '''

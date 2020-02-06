@@ -86,7 +86,8 @@ class AHNSubTileDataset(Dataset):
         return len(self.processed_file_names)
 
     def get(self, idx):
-        print('loading file:', self.processed_paths[idx])
+        worker_info = torch.utils.data.get_worker_info()
+        print('wid: {} loading file:'.format(worker_info.id if worker_info else -1), self.processed_paths[idx])
         data = torch.load(self.processed_paths[idx])
         data.name = self.processed_file_names[idx].split('.')[0]
         return data
@@ -244,7 +245,7 @@ class AHNAerialDataset(BaseDataset):
         train_patch_dataset = PartialPatchDataset(
             train_tiles_dataset,
             make_patchable_cloud,
-            num_loaded_datasets=2,
+            datasets_per_worker=2,
             samples_per_dataset=20
         )
         self.train_dataset = FalibleDatasetWrapper(
@@ -256,8 +257,8 @@ class AHNAerialDataset(BaseDataset):
         test_patch_dataset = PartialPatchDataset(
             test_tiles_dataset,
             make_patchable_cloud,
-            num_loaded_datasets=1,
-            samples_per_dataset=20
+            datasets_per_worker=1,
+            samples_per_dataset=10
         )
         self.test_dataset = FalibleDatasetWrapper(
             test_patch_dataset, 
