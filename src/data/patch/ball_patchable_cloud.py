@@ -2,7 +2,7 @@
 import torch
 import torch_geometric
 
-from src.data.base_patchable_pointcloud import BasePatchablePointCloud
+from src.data.patch.base_patchable_pointcloud import BasePatchablePointCloud
 
 class PointBallPatchableCloud(BasePatchablePointCloud):
     '''

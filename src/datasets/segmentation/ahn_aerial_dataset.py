@@ -13,8 +13,8 @@ from torch_geometric.data import InMemoryDataset, Dataset
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
 sys.path.append(ROOT)
 
-from src.data.patch_dataset import PatchDataset, LargePatchDataset
-from src.data.grid2D_patchable_cloud import Grid2DPatchableCloud
+from src.data.patch.patch_dataset import PatchDataset, LargePatchDataset
+from src.data.patch.grid2D_patchable_cloud import Grid2DPatchableCloud
 from src.data.falible_dataset import FalibleDatasetWrapper, FalibleIterDatasetWrapper
 from src.data.sampler import UniqueRandomSampler, UniqueSequentialSampler
 from src.data.base_dataset import BaseDataset
@@ -46,7 +46,7 @@ class AHNSubTileDataset(Dataset):
         '31HZ2',
     ]
 
-    x = [
+    test_tiles = [
         '32CN1',
         '37EN2',
     ]
@@ -88,6 +88,7 @@ class AHNSubTileDataset(Dataset):
     def get(self, idx):
         print('loading file:', self.processed_paths[idx])
         data = torch.load(self.processed_paths[idx])
+        data.name = self.processed_file_names[idx].split('.')[0]
         return data
 
     def download(self):
@@ -244,14 +245,16 @@ class AHNAerialDataset(BaseDataset):
             train_tiles_dataset,
             make_patchable_cloud,
             num_loaded_datasets=1,
+            samples_per_dataset=20//training_opt.num_workers
         )
         self.train_dataset = FalibleIterDatasetWrapper(train_patch_dataset, 100//training_opt.num_workers)
 
-        test_tiles_dataset = AHNSubTileDataset(self._data_path, "train")
+        test_tiles_dataset = AHNSubTileDataset(self._data_path, "test")
         test_patch_dataset = LargePatchDataset(
             test_tiles_dataset,
             make_patchable_cloud,
             num_loaded_datasets=1,
+            samples_per_dataset=20//training_opt.num_workers
         )
         self.test_dataset = FalibleIterDatasetWrapper(test_patch_dataset, 50//training_opt.num_workers)
 

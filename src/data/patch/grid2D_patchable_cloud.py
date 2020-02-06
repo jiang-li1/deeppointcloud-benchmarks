@@ -4,7 +4,7 @@ import math
 import torch
 import torch_geometric
 
-from src.data.base_patchable_pointcloud import BasePatchablePointCloud
+from src.data.patch.base_patchable_pointcloud import BasePatchablePointCloud
 from src.data.falible_dataset import InvalidIndexError
 
 class Grid2DPatchableCloud(BasePatchablePointCloud):
@@ -57,6 +57,9 @@ class Grid2DPatchableCloud(BasePatchablePointCloud):
 
         if self.eval_mode:
             d.global_index = block_idx
+
+        if hasattr(self.data, 'name'):
+            d.name = self.data.name + ':{}'.format(index)
 
         return d
 

@@ -9,7 +9,7 @@ from overrides import overrides
 import numpy as np
 
 from src.data.base_dataset import BaseDataset
-from src.data.base_patchable_pointcloud import BasePatchablePointCloud
+from src.data.patch.base_patchable_pointcloud import BasePatchablePointCloud
 from src.data.falible_dataset import FalibleDatasetWrapper
 from src.data.sampler import unique_random_index
 
@@ -48,7 +48,7 @@ class PatchDataset(torch.utils.data.Dataset):
     def __getattr__(self, name):
         return getattr(self.patchable_clouds[0], name)
 
-class LargePatchDataset(torch.utils.data.IterableDataset):
+class LargePatchDataset(torch.utils.data.Dataset):
     '''like BaseMultiCloudPatchDatasets, but for datasets that are too large to fit in memory''' 
 
     def __init__(self, 
@@ -75,6 +75,7 @@ class LargePatchDataset(torch.utils.data.IterableDataset):
             self.cycle()
 
         idx = unique_random_index(len(self._patch_dataset))
+        self._num_samples_taken += 1
         return self._patch_dataset[idx]
 
     #forward all attribute calls to the underlying datasets

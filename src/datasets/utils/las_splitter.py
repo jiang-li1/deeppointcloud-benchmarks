@@ -6,6 +6,8 @@ import pathlib
 import re
 import numpy as np 
 
+# from 
+
 def split_las_pointcloud(filename, num_subclouds, output_dir):
     '''Split a pointcloud stored in a las file into split * split blocks in x and y, 
         where split = num_subclouds//num_subclouds.
@@ -19,7 +21,11 @@ def split_las_pointcloud(filename, num_subclouds, output_dir):
 
     path = pathlib.Path(filename)
 
-    info = _exe_command(['lasinfo', '-no_check', str(path)])
+    try:
+        info = _exe_command(['lasinfo', '-no_check', str(path)])
+    except FileNotFoundError as e:
+        print(e)
+        print("Using LAZtools failed. Are they installed and on PATH?")
 
     minX, minY = map(float, re.search(r'min x y z:\s*(\S*)\s(\S*)', info).groups())
     maxX, maxY = map(float, re.search(r'max x y z:\s*(\S*)\s(\S*)', info).groups())
