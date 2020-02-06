@@ -27,7 +27,7 @@ class BaseDataset:
         else:
             self._pre_transform = None
 
-    def _create_dataloaders(self, train_dataset, test_dataset, val_dataset=None, train_sampler=None, test_sampler=None):
+    def _create_dataloaders(self, train_dataset, test_dataset, val_dataset=None, train_sampler=None, test_sampler=None, num_test_workers=None):
         """ Creates the data loaders. Must be called in order to complete the setup of the Dataset
         """
         self._num_classes = train_dataset.num_classes
@@ -50,7 +50,7 @@ class BaseDataset:
             test_dataset,
             batch_size=self.training_opt.batch_size,
             shuffle=False,
-            num_workers=self.training_opt.num_workers,
+            num_workers=num_test_workers if num_test_workers else self.training_opt.num_workers,
             sampler=test_sampler,
         )
 

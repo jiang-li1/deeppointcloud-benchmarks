@@ -245,7 +245,7 @@ class AHNAerialDataset(BaseDataset):
         train_patch_dataset = PartialPatchDataset(
             train_tiles_dataset,
             make_patchable_cloud,
-            datasets_per_worker=2,
+            datasets_per_worker=1,
             samples_per_dataset=20
         )
         self.train_dataset = FalibleDatasetWrapper(
@@ -258,7 +258,7 @@ class AHNAerialDataset(BaseDataset):
             test_tiles_dataset,
             make_patchable_cloud,
             datasets_per_worker=1,
-            samples_per_dataset=10
+            samples_per_dataset=20
         )
         self.test_dataset = FalibleDatasetWrapper(
             test_patch_dataset, 
@@ -271,6 +271,7 @@ class AHNAerialDataset(BaseDataset):
             self.train_dataset,
             self.test_dataset,
             val_dataset=None,
+            num_test_workers=training_opt.num_workers//2
         )
 
     @property
