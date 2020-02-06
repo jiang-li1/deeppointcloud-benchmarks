@@ -48,7 +48,7 @@ class PatchDataset(torch.utils.data.Dataset):
     def __getattr__(self, name):
         return getattr(self.patchable_clouds[0], name)
 
-class LargePatchDataset(torch.utils.data.Dataset):
+class PartialPatchDataset(torch.utils.data.Dataset):
     '''like BaseMultiCloudPatchDatasets, but for datasets that are too large to fit in memory''' 
 
     def __init__(self, 
@@ -62,28 +62,32 @@ class LargePatchDataset(torch.utils.data.Dataset):
         self._samples_per_dataset = samples_per_dataset
         self._num_loaded_datasets = num_loaded_datasets
 
-        self._num_samples_taken = 0
         self._patch_dataset = None
-        self.cycle()
+        self._index_sequence = []
+        self._load()
+
+    def __len__(self):
+        return len(self._index_sequence)
 
     @overrides
-    def __iter__(self):
-        return self
+    def __getitem__(self, idx):
+        return self._patch_dataset[self._index_sequence[idx]]
 
-    def __next__(self):
-        if self._num_samples_taken > self._samples_per_dataset * self._num_loaded_datasets:
-            self.cycle()
 
-        idx = unique_random_index(len(self._patch_dataset))
-        self._num_samples_taken += 1
-        return self._patch_dataset[idx]
+    # def __next__(self):
+    #     if self._num_samples_taken > self._samples_per_dataset * self._num_loaded_datasets:
+    #         self.cycle()
+
+    #     idx = unique_random_index(len(self._patch_dataset))
+    #     self._num_samples_taken += 1
+    #     return self._patch_dataset[idx]
 
     #forward all attribute calls to the underlying datasets
     #(e.g. num_features)
     def __getattr__(self, name):
         return getattr(self._patch_dataset, name)
 
-    def cycle(self):
+    def _load(self):
         patchableCloudIndexes = np.random.choice(
                 len(self._backing_dataset),
                 size=self._num_loaded_datasets,
@@ -94,7 +98,15 @@ class LargePatchDataset(torch.utils.data.Dataset):
             self._make_patchable_cloud(self._backing_dataset[idx]) 
             for idx in patchableCloudIndexes
         ])
-        self._num_samples_taken = 0
+
+        self._index_sequence = np.random.choice(
+            len(self._patch_dataset),
+            self._samples_per_dataset * self._num_loaded_datasets,
+            replace=False
+        )
+        
+    def reset(self):
+        self._load()
 
 
 

@@ -30,8 +30,8 @@ class UniqueSequentialSampler(torch.utils.data.SequentialSampler):
     the entire pointclouds (e.g. for evalulation as opposed to training)
     '''
 
-    def __init__(self, num_workers, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, dataset, num_workers, *args, **kwargs):
+        super().__init__(dataset, *args, **kwargs)
 
         self.num_workers = num_workers
         self.i = 0

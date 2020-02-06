@@ -28,7 +28,7 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
     model.train()
     tracker.reset("train")
     train_loader = dataset.train_dataloader()
-
+    train_loader.dataset.reset()
     iter_data_time = time.time()
     with Ctq(train_loader) as tq_train_loader:
         for i, data in enumerate(tq_train_loader):
@@ -89,8 +89,11 @@ def test_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoi
     model.eval()
     tracker.reset("test")
     loader = dataset.test_dataloader()
+    loader.dataset.reset()
     with Ctq(loader) as tq_test_loader:
         for data in tq_test_loader:
+
+            print(data.name)
             data = data.to(device)
             with torch.no_grad():
                 model.set_input(data)

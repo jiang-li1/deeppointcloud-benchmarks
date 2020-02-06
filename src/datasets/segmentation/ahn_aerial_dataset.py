@@ -13,7 +13,7 @@ from torch_geometric.data import InMemoryDataset, Dataset
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
 sys.path.append(ROOT)
 
-from src.data.patch.patch_dataset import PatchDataset, LargePatchDataset
+from src.data.patch.patch_dataset import PatchDataset, PartialPatchDataset
 from src.data.patch.grid2D_patchable_cloud import Grid2DPatchableCloud
 from src.data.falible_dataset import FalibleDatasetWrapper, FalibleIterDatasetWrapper
 from src.data.sampler import UniqueRandomSampler, UniqueSequentialSampler
@@ -241,22 +241,28 @@ class AHNAerialDataset(BaseDataset):
             return AHNGridPatchableCloud(data, **dataset_opt.patch_opt)
 
         train_tiles_dataset = AHNSubTileDataset(self._data_path, "train")
-        train_patch_dataset = LargePatchDataset(
+        train_patch_dataset = PartialPatchDataset(
             train_tiles_dataset,
             make_patchable_cloud,
-            num_loaded_datasets=1,
-            samples_per_dataset=20//training_opt.num_workers
+            num_loaded_datasets=2,
+            samples_per_dataset=20
         )
-        self.train_dataset = FalibleIterDatasetWrapper(train_patch_dataset, 100//training_opt.num_workers)
+        self.train_dataset = FalibleDatasetWrapper(
+            train_patch_dataset,
+            UniqueSequentialSampler(train_patch_dataset, training_opt.num_workers)
+        )
 
         test_tiles_dataset = AHNSubTileDataset(self._data_path, "test")
-        test_patch_dataset = LargePatchDataset(
+        test_patch_dataset = PartialPatchDataset(
             test_tiles_dataset,
             make_patchable_cloud,
             num_loaded_datasets=1,
-            samples_per_dataset=20//training_opt.num_workers
+            samples_per_dataset=20
         )
-        self.test_dataset = FalibleIterDatasetWrapper(test_patch_dataset, 50//training_opt.num_workers)
+        self.test_dataset = FalibleDatasetWrapper(
+            test_patch_dataset, 
+            UniqueSequentialSampler(test_patch_dataset, training_opt.num_workers)
+        )
 
         self.pointcloud_scale = dataset_opt.scale
 
