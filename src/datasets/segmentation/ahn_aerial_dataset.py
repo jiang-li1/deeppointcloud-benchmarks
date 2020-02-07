@@ -13,10 +13,10 @@ from torch_geometric.data import InMemoryDataset, Dataset
 ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..")
 sys.path.append(ROOT)
 
-from src.data.patch.patch_dataset import PatchDataset, PartialPatchDataset
+from src.data.patch.patch_dataset import PatchDataset, LazyPartialPatchDataset
 from src.data.patch.grid2D_patchable_cloud import Grid2DPatchableCloud
 from src.data.falible_dataset import FalibleDatasetWrapper, FalibleIterDatasetWrapper
-from src.data.sampler import UniqueRandomSampler, UniqueSequentialSampler
+from src.data.sampler import UniqueRandomSampler, UniqueSequentialSampler, LazyUniqueRandomSampler
 from src.data.base_dataset import BaseDataset
 
 from src.metrics.ahn_tracker import AHNTracker
@@ -242,27 +242,42 @@ class AHNAerialDataset(BaseDataset):
             return AHNGridPatchableCloud(data, **dataset_opt.patch_opt)
 
         train_tiles_dataset = AHNSubTileDataset(self._data_path, "train")
-        train_patch_dataset = PartialPatchDataset(
+        train_cloud_sampler = UniqueRandomSampler(
+            train_tiles_dataset, 
+            num_samples=1,
+            worker_unique=True,
+            epoch_unique=True
+        )
+        train_patch_sampler = LazyUniqueRandomSampler(40)
+
+        train_patch_dataset = LazyPartialPatchDataset(
             train_tiles_dataset,
+            train_cloud_sampler,
             make_patchable_cloud,
-            datasets_per_worker=1,
-            samples_per_dataset=20
+            train_patch_sampler
         )
         self.train_dataset = FalibleDatasetWrapper(
             train_patch_dataset,
-            UniqueSequentialSampler(train_patch_dataset, training_opt.num_workers)
+            None
         )
 
         test_tiles_dataset = AHNSubTileDataset(self._data_path, "test")
-        test_patch_dataset = PartialPatchDataset(
+        test_cloud_sampler = UniqueRandomSampler(
             test_tiles_dataset,
+            num_samples=1,
+            worker_unique=True,
+            epoch_unique=True
+        )
+        test_patch_sampler = LazyUniqueRandomSampler(40)
+        test_patch_dataset = LazyPartialPatchDataset(
+            test_tiles_dataset,
+            test_cloud_sampler,
             make_patchable_cloud,
-            datasets_per_worker=1,
-            samples_per_dataset=20
+            test_patch_sampler
         )
         self.test_dataset = FalibleDatasetWrapper(
             test_patch_dataset, 
-            UniqueSequentialSampler(test_patch_dataset, training_opt.num_workers)
+            None
         )
 
         self.pointcloud_scale = dataset_opt.scale

@@ -53,7 +53,7 @@ class FalibleDatasetWrapper(torch.utils.data.IterableDataset):
     '''
 
     def __init__(self, dataset: torch.utils.data.Dataset, sampler: torch.utils.data.Sampler):
-        self._sampler = iter(sampler)
+        self._sampler = iter(sampler) if sampler else iter(range(len(dataset)))
         self._dataset = dataset
         self._max_retries = 10
 

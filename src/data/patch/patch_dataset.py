@@ -11,7 +11,7 @@ import numpy as np
 from src.data.base_dataset import BaseDataset
 from src.data.patch.base_patchable_pointcloud import BasePatchablePointCloud
 from src.data.falible_dataset import FalibleDatasetWrapper
-from src.data.sampler import unique_random_index, epoch_unique_random_seed
+from src.data.sampler import unique_random_index, epoch_unique_random_seed, BaseLazySampler
 
 
 class PatchDataset(torch.utils.data.Dataset):
@@ -48,35 +48,34 @@ class PatchDataset(torch.utils.data.Dataset):
     def __getattr__(self, name):
         return getattr(self.patchable_clouds[0], name)
 
-class PartialPatchDataset(torch.utils.data.Dataset):
+class LazyPartialPatchDataset(torch.utils.data.Dataset):
     '''like BaseMultiCloudPatchDatasets, but for datasets that are too large to fit in memory''' 
 
     def __init__(self, 
         backing_dataset: torch.utils.data.Dataset, 
+        patchable_cloud_sampler: torch.utils.data.Sampler,
         make_patchable_cloud: Callable[[Data], BasePatchablePointCloud],
-        samples_per_dataset = 10,
-        datasets_per_worker = 2
+        patch_sampler: BaseLazySampler,
     ):
-        self._backing_dataset = backing_dataset
-        self._make_patchable_cloud = make_patchable_cloud
-        self._samples_per_dataset = samples_per_dataset
-        self._num_loaded_datasets = datasets_per_worker
+        self.backing_dataset = backing_dataset
+        self.pachable_cloud_sampler = iter(patchable_cloud_sampler)
+        self.make_patchable_cloud = make_patchable_cloud
+        self.patch_sampler = patch_sampler
 
-        self._patch_dataset = None
-        self._index_sequence = []
+        self.patch_dataset = None
         # self._load()
 
         self.num_classes = 5
         self.num_features = 3
 
     def __len__(self):
-        return self._samples_per_dataset * self._num_loaded_datasets
+        return len(self.patch_sampler)
 
     @overrides
     def __getitem__(self, idx):
-        if self._patch_dataset is None:
-            self._load()
-        return self._patch_dataset[self._index_sequence[idx]]
+        if self.patch_dataset is None:
+            self.load()
+        return self.patch_dataset[self.patch_indexes[idx]]
 
 
     # def __next__(self):
@@ -90,31 +89,16 @@ class PartialPatchDataset(torch.utils.data.Dataset):
     #forward all attribute calls to the underlying datasets
     #(e.g. num_features)
     def __getattr__(self, name):
-        return getattr(self._patch_dataset, name)
+        return getattr(self.patch_dataset, name)
 
-    def _load(self):
-        s = epoch_unique_random_seed() % 2**31
-        np.random.seed(s)
-        patchableCloudIndexes = np.random.choice(
-                len(self._backing_dataset),
-                size=self._num_loaded_datasets,
-                replace=False,
-        )
-
-        self._patch_dataset = PatchDataset([
-            self._make_patchable_cloud(self._backing_dataset[idx]) 
-            for idx in patchableCloudIndexes
+    def load(self):
+        self.patch_dataset = PatchDataset([
+            self.make_patchable_cloud(self.backing_dataset[idx]) 
+            for idx in self.pachable_cloud_sampler
         ])
+        self.patch_sampler.load(self.patch_dataset)
+        self.patch_indexes = list(self.patch_sampler)
 
-        self._index_sequence = np.random.choice(
-            len(self._patch_dataset),
-            self._samples_per_dataset * self._num_loaded_datasets,
-            replace=False
-        )
-
-    def reset(self):
-        # self._load()
-        pass
 
 
 
