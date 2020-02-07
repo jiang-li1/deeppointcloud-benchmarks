@@ -63,7 +63,6 @@ class LazyPartialPatchDataset(torch.utils.data.Dataset):
         self.patch_sampler = patch_sampler
 
         self.patch_dataset = None
-        # self._load()
 
         self.num_classes = 5
         self.num_features = 3

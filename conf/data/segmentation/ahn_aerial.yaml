@@ -2,6 +2,7 @@ data:
     name: ahn_aerial
     dataroot: data
     scale: 10
+    in_memory: True # needs ~ 64 GB
     patch_opt:
         patch_diam: 30
         context_dist: 2

@@ -132,6 +132,37 @@ class AHNSubTileDataset(Dataset):
             for tn in tile_names
         ]))
 
+class AHNSubTileInMemoryDataset(InMemoryDataset):
+
+    def __init__(self, root, split, transform=None, pre_transform=None, pre_filter=None):
+        self.split = split
+        self.subtile_dataset = AHNSubTileDataset(root, split)
+        super().__init__(root, transform, pre_transform, pre_filter)
+
+        clouds = [self.subtile_dataset[i] for i in range(len(self.subtile_dataset))]
+        for c in clouds:
+            delattr(c, 'name')
+        self.data, self.slices = self.collate(clouds) # this little manoeuvre's going to cost us 32GB of memory
+
+    def __getitem__(self, idx):
+        d = super().__getitem__(idx)
+        d.name = self.subtile_dataset.processed_file_names[idx].split('.')[0]
+        return d
+
+    @property
+    def raw_file_names(self):
+        return self.subtile_dataset.raw_file_names
+
+    @property
+    def processed_file_names(self):
+        return self.subtile_dataset.processed_file_names
+
+    def download(self):
+        self.subtile_dataset.download()
+
+    def process(self):
+        self.subtile_dataset.process()
+
 class AHNTilesDataset(InMemoryDataset):
 
     adriaan_tiles_train = [
@@ -238,6 +269,50 @@ class AHNAerialDataset(BaseDataset):
         super().__init__(dataset_opt, training_opt)
         self._data_path = osp.join(ROOT, dataset_opt.dataroot, "AHNSubTilesDataset")
 
+        if dataset_opt.in_memory:
+            self.in_memory_init(dataset_opt, training_opt)
+        else:
+            self.partial_dataset_init(dataset_opt, training_opt)
+
+        
+    def in_memory_init(self, dataset_opt, training_opt):
+
+        train_tiles_dataset = AHNSubTileInMemoryDataset(self._data_path, "train")
+        train_patch_dataset = PatchDataset(
+            [AHNGridPatchableCloud(d, **dataset_opt.patch_opt) for d in train_tiles_dataset]
+        )
+        self.train_dataset = FalibleDatasetWrapper(
+            train_patch_dataset,
+            UniqueRandomSampler(
+                train_patch_dataset,
+                replacement=True,
+                num_samples=200//training_opt.num_workers, #sample ~100 patches in total per epoch
+            )
+        )
+        test_tiles_dataset = AHNSubTileInMemoryDataset(self._data_path, "test")
+        test_patch_dataset = PatchDataset(
+            [AHNGridPatchableCloud(d, **dataset_opt.patch_opt) for d in test_tiles_dataset]
+        )
+        self.test_dataset = FalibleDatasetWrapper(
+            test_patch_dataset,
+            UniqueRandomSampler(
+                test_patch_dataset,
+                replacement=True,
+                num_samples=50//training_opt.num_workers,
+            )
+        )
+
+        self._create_dataloaders(
+            self.train_dataset,
+            self.test_dataset,
+            val_dataset=None,
+        )
+
+        self.pointcloud_scale = dataset_opt.scale
+
+
+
+    def partial_dataset_init(self, dataset_opt, training_opt):
         def make_patchable_cloud(data: torch_geometric.data.Data) -> AHNGridPatchableCloud:
             return AHNGridPatchableCloud(data, **dataset_opt.patch_opt)
 
@@ -288,6 +363,7 @@ class AHNAerialDataset(BaseDataset):
             val_dataset=None,
             num_test_workers=training_opt.num_workers//2
         )
+
 
     @property
     def class_num_to_name(self):
