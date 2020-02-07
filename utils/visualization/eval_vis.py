@@ -3,7 +3,7 @@ import open3d as o3d
 import torch 
 
 from utils.visualization.pcd_utils import *
-from src.datasets.base_patch_dataset import Grid2DPatchDataset, ClassifiedPointCloud
+from src.data.pointcloud import ClassifiedPointCloud
 
 def visualize_classes(cloud: ClassifiedPointCloud):
 

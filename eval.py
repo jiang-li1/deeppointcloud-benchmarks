@@ -32,7 +32,7 @@ from src.utils.colors import COLORS
 from src.utils.config import merges_in_sub, set_format
 
 from utils.visualization.eval_vis import visualize_classes, visualize_predictions, visualize_difference
-from src.datasets.base_patch_dataset import ClassifiedPointCloud
+from src.data.pointcloud import ClassifiedPointCloud
 
 def eval_model(model, loader: torch.utils.data.DataLoader, tracker, device, eval_name, use_cache=True):
 

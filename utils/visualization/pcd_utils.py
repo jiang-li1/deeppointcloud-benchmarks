@@ -8,7 +8,7 @@ import torch
 import numpy as np
 import open3d as o3d
 
-from src.datasets.base_patch_dataset import PointCloud, ClassifiedPointCloud
+from src.data.pointcloud import PointCloud, ClassifiedPointCloud
 from utils.custom_datasets.file_pointcloud import FilePointCloud
 
 

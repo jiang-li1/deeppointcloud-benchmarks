@@ -61,7 +61,7 @@ class ClassifiedPointCloud(PointCloud):
 
     @classmethod
     def from_data(cls, data: torch_geometric.data.Data):
-        return cls(data.pos, data.y, data.x)
+        return cls(data.pos.squeeze(), data.y.squeeze(), data.x.squeeze())
 
     @property
     def classes(self) -> torch.tensor:
