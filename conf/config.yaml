@@ -2,7 +2,7 @@ model_name: pointnet2_original # Name of the specific model to load
 model_type: pointnet2
 dataset: ahn_aerial
 task: segmentation
-experiment_name: ahn_paper_pn2 #experiment name, used for saving outputs
+experiment_name: ahn_paper_pn2_50 #experiment name, used for saving outputs
 
 
 defaults:
