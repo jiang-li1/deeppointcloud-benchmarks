@@ -94,6 +94,15 @@ class ConfusionMatrix:
             all_values = 1
         return float(matrix_diagonal) / all_values
 
+    def get_overall_iou(self):
+        TP_plus_FN = np.sum(self.confusion_matrix, axis=0)
+        TP_plus_FP = np.sum(self.confusion_matrix, axis=1)
+        TP = np.diagonal(self.confusion_matrix)
+        union = np.sum(TP_plus_FN + TP_plus_FP - TP)
+        intersection = np.sum(TP)
+        iou = 1e-8 + intersection / (union + 1e-8)
+        return iou
+
     def get_average_intersection_union(self, missing_as_one=False):
         """ Get the mIoU metric by ignoring missing labels. 
         If missing_as_one is True then treats missing classes in the IoU as 1

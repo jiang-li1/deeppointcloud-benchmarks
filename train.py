@@ -50,11 +50,13 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
                 traceback.print_exc()
                 import pdb; pdb.set_trace()
 
-            if i % 10 == 0:
+            if i % 10 == 0 or True:
                 tracker.track(model)
 
+            # import pdb; pdb.set_trace()
+
             tq_train_loader.set_postfix(
-                **tracker.get_metrics(),
+                **(tracker.get_metrics() if i % 10 == 0 else tracker.get_instantaneous_metrics()),
                 data_loading=float(t_data),
                 iteration=float(time.time() - iter_start_time),
                 color=COLORS.TRAIN_COLOR
@@ -62,6 +64,7 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
             iter_data_time = time.time()
 
     metrics = tracker.publish()
+    tracker.print_summary()
     checkpoint.save_best_models_under_current_metrics(model, metrics)
     log.info("Learning rate = %f" % model.learning_rate)
 
@@ -100,7 +103,10 @@ def test_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoi
                 model.forward()
 
             tracker.track(model)
-            tq_test_loader.set_postfix(**tracker.get_metrics(), color=COLORS.TEST_COLOR)
+            tq_test_loader.set_postfix(
+                **tracker.get_instantaneous_metrics(), 
+                color=COLORS.TEST_COLOR
+            )
 
     metrics = tracker.publish()
     tracker.print_summary()

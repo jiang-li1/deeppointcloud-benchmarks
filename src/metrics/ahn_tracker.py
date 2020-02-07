@@ -30,6 +30,8 @@ class AHNTracker(BaseTracker):
         """
         super().track(model)
 
+        self._i_loss = model.get_current_losses()['loss_seg']
+
         outputs = self._convert(model.get_output())
         targets = self._convert(model.get_labels())
 
@@ -42,9 +44,16 @@ class AHNTracker(BaseTracker):
         assert outputs.shape[0] == len(targets)
         self._confusion_matrix.count_predicted_batch(targets, np.argmax(outputs, 1))
 
-        self._acc = 100 * self._confusion_matrix.get_overall_accuracy()
-        self._macc = 100 * self._confusion_matrix.get_mean_class_accuracy()
-        self._miou = 100 * self._confusion_matrix.get_average_intersection_union()
+        self._a_acc = 100 * self._confusion_matrix.get_overall_accuracy()
+        self._a_macc = 100 * self._confusion_matrix.get_mean_class_accuracy()
+        self._a_miou = 100 * self._confusion_matrix.get_average_intersection_union()
+
+        instantanousCF = ConfusionMatrix(self._num_classes)
+        instantanousCF.count_predicted_batch(targets, np.argmax(outputs, 1))
+        self._i_acc = 100 * instantanousCF.get_overall_accuracy()
+        self._i_iou = 100 * instantanousCF.get_overall_iou()
+
+
 
         # self._conf_matrix = self._confusion_matrix.get_confusion_matrix()
 
@@ -93,14 +102,20 @@ class AHNTracker(BaseTracker):
     #         s += '\n'
     #     return s
 
+    def get_instantaneous_metrics(self) -> Dict[str, float]:
+
+        return {name: getattr(self, '_' + name) for name in ['i_acc', 'i_loss', 'i_iou']}
+
+
     def get_metrics(self, verbose=False) -> Dict[str, float]:
         """ Returns a dictionnary of all metrics and losses being tracked
         """
         metrics = super().get_metrics(verbose)
 
-        metrics["{}_acc".format(self._stage)] = self._acc
-        metrics["{}_macc".format(self._stage)] = self._macc
-        metrics["{}_miou".format(self._stage)] = self._miou
+        metrics["{}_a_acc".format(self._stage)] = self._a_acc
+        metrics["{}_a_macc".format(self._stage)] = self._a_macc
+        metrics["{}_a_miou".format(self._stage)] = self._a_miou
+        # metrics["{}_loss".format(self._stage)] = self._loss
         if verbose:
             # metrics['{}_conf_matrix'.format(self._stage)] = self._get_str_conf_matrix()
 
