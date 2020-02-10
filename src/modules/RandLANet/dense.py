@@ -11,7 +11,7 @@ class DenseRandlanetKernel(torch.nn.Module):
     def __init__(self, rel_point_pos_nn=None, attention_nn=None, global_nn=None, *args, **kwargs):
         super().__init__()
 
-        self.rel_point_pos_nn = pt_utils.sharedMLP(rel_point_pos_nn)
+        self.rel_point_pos_nn = pt_utils.SharedMLP(rel_point_pos_nn)
 
     def forward(self, rel_point_pos, grouped_features):
         """

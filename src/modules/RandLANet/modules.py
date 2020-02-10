@@ -122,3 +122,54 @@ class RandLANetRes(torch.nn.Module):
 
     def forward(self, data):
         return self._conv.forward(data)
+
+class RandlaBlock(torch.nn.Module):
+
+    def __init__(self, *, 
+        sampler: BaseSampler = None,
+        in_nn,
+        neighbour_finder_1: BaseNeighbourFinder,
+        rel_point_pos_nn_1,
+        attention_nn_1,
+        aggregation_nn_1,
+        neighbour_finder_2: BaseNeighbourFinder,
+        rel_point_pos_nn_2,
+        attention_nn_2,
+        aggregation_nn_2,
+        skip_nn
+    ):
+
+        make_mlp = MLP
+
+        self.sampler = sampler
+        self.in_nn = make_mlp(in_nn)
+
+        self.neighbour_finder_1 = neighbour_finder_1
+        self.kernel_1 = RandlaKernel(
+            rel_point_pos_nn=rel_point_pos_nn_1,
+            attention_nn=attention_nn_1,
+            global_nn=aggregation_nn_1
+        )
+        
+        self.neighbour_finder_2 = neighbour_finder_2
+        self.kernel_2 = RandlaKernel(
+            rel_point_pos_nn=rel_point_pos_nn_2,
+            attention_nn=attention_nn_2,
+            global_nn=aggregation_nn_2
+        )
+
+        self.skip_nn = make_mlp(skip_nn)
+
+    def forward(self, data):
+        
+        
+
+class RandlaBaseModule(torch.nn.Module):
+
+    def __init__(self, *, nn):
+
+        self.nn = MLP(nn)
+
+    def forward(self, data):
+        pass
+

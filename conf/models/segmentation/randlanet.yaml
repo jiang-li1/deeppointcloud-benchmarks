@@ -1,4 +1,73 @@
 models:
+
+    Randlanet_mp:
+        # Note: concat pos to x, so that FEAT = len(pos) + len(x) 
+        class: randlanet.RandLANetSeg
+        conv_type: "MESSAGE_PASSING"
+        define_constants:
+            L1_OUT: 32
+            L2_OUT: 128
+            CLS_MLP: 64
+        down_conv:
+          - module_name: RandlaBlock
+
+            in_reshape_nn: [FEAT, L1_OUT // 4]
+
+            #LocSE + Attentive Pooling 1: in = L1_OUT // 4, out = L1_OUT // 2
+            neighbour_finder_1:
+                module_name: KNNNeighbourFinder
+                k: 16
+            rel_point_pos_nn_1: [10, L1_OUT // 4, L1_OUT // 4]
+            attention_nn_1: [L1_OUT // 2, L1_OUT, L1_OUT // 2]
+            aggregation_nn_1: [L1_OUT // 2, L1_OUT // 2]
+
+            #LocSE + Attentive Pooling 2: in = L1_OUT // 2, out = L1_OUT
+            neighbour_finder_2:
+                module_name: KNNNeighbourFinder
+                k: 16
+            rel_point_pos_nn_2: [10, L1_OUT // 2, L1_OUT // 2]
+            attention_nn_2: [L1_OUT, 2 * L1_OUT, L1_OUT]
+            aggregation_nn_2: [L1_OUT, L1_OUT] 
+
+            skip_nn: [FEAT, L1_OUT]
+        
+          - module_name: RandlaBlock
+            sampler:
+                class: RandomSampler
+                ratio: 1/4
+
+            in_reshape_nn: [L1_OUT, L2_OUT // 4]
+
+            #LocSE + Attentive Pooling 1: in = L1_OUT, out = L2_OUT // 2
+            neighbour_finder_1:
+                module_name: KNNNeighbourFinder
+                k: 16
+            rel_point_pos_nn_1: [10, L2_OUT // 4, L2_OUT // 4]
+            attention_nn_1: [L2_OUT // 2, L2_OUT, L2_OUT // 2]
+            aggregation_nn_1: [L2_OUT // 2, L2_OUT // 2]
+
+            #LocSE + Attentive Pooling 2: in = L2_OUT // 2, out = L2_OUT
+            neighbour_finder_2:
+                module_name: KNNNeighbourFinder
+                k: 16
+            rel_point_pos_nn_2: [10, L2_OUT // 2, L2_OUT // 2]
+            attention_nn_2: [L2_OUT, 2 * L2_OUT, L2_OUT]
+            aggregation_nn_2: [L2_OUT, L2_OUT] 
+        innermost:
+            module_name: RandlaBaseModule
+            nn: [L2_OUT, 2 * L2_OUT, L2_OUT]
+        up_conv:
+          - module_name: FPModule
+            up_k: 1
+            skip: True
+            up_conv_nn: [2 * L1_OUT, L1_OUT, L1_OUT]
+          - module_name: FPModule
+            up_k: 1
+            skip: True
+            up_conv_nn: [2 * L1_OUT, CLS_MLP, CLS_MLP]
+
+
+
     # RandLA-Net: Efficient Semantic Segmentation of Large-Scale Point Clouds (https://arxiv.org/pdf/1911.11236.pdf)
     Randlanet_Res:
         class: randlanet.RandLANetSeg
