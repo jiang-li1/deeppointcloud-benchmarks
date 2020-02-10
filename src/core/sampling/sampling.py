@@ -49,6 +49,13 @@ class BaseSampler(ABC):
     def sample(self, pos, x=None, batch=None):
         pass
 
+    def __repr__(self):
+        if hasattr(self, '_ratio'):
+            inner = 'ratio={:.4f}'.format(self._ratio)
+        else:
+            inner = 'num_to_sample={}'.format(self._num_to_sample)
+        return '{}({})'.format(self.__class__.__name__, inner)
+
 
 class FPSSampler(BaseSampler):
     """If num_to_sample is provided, sample exactly

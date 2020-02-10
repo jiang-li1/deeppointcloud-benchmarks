@@ -140,6 +140,9 @@ class MultiscaleRadiusNeighbourFinder(BaseMSNeighbourFinder):
         """
         return self.find_neighbours(x, y, batch_x, batch_y, scale_idx)
 
+    def __repr__(self):
+        return '{}(radius={}, max_nn={})'.format(self.__class__.__name__, str(self._radius), str(self._max_num_neighbors))
+
 
 class DenseRadiusNeighbourFinder(MultiscaleRadiusNeighbourFinder):
     """ Multiscale radius search for dense graphs

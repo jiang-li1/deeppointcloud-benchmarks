@@ -81,6 +81,8 @@ class BaseDenseConvolutionDown(BaseConvolution):
         new_x = torch.cat(ms_x, 1)
         return Data(pos=new_pos, x=new_x)
 
+        
+
 
 class BaseDenseConvolutionUp(BaseConvolution):
 

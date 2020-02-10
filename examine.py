@@ -26,7 +26,7 @@ from src.utils.config import set_format
 
 from src.data.pointcloud import ClassifiedPointCloud
 
-from utils.visualization.eval_vis import visualize_predictions, visualize_difference
+from utils.visualization.eval_vis import visualize_predictions, visualize_difference, visualize_classes
 
 global model, dataset, tracker, train_loader, data, i, device, epoch, checkpoint, log, train_iterator, iter_data_time, tq_train_loader
 
@@ -68,13 +68,18 @@ def train_it(len=1):
         )
         iter_data_time = time.time()
 
-def vis_model():
+def vis_model(difference=True, classes=False, predictions=False):
     output = model.get_output()
     output = torch.argmax(output.cpu(), 1)
 
     cpcd = ClassifiedPointCloud.from_data(data.to('cpu'))
 
-    visualize_difference(cpcd, output)
+    if difference:
+        visualize_difference(cpcd, output)
+    if classes:
+        visualize_classes(cpcd)
+    if predictions:
+        visualize_predictions(cpcd, output)
 
 
 
