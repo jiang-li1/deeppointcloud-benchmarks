@@ -41,6 +41,19 @@ class BaseFactory:
         else:
             return getattr(self.modules_lib, self.module_name_down, None)
 
+def build_module(cfg, modules_lib):
+
+    module_cls = getattr(modules_lib, cfg['module_name'])
+
+    module_args = dict(cfg)
+
+    for k in module_args:
+        if type(module_args[k]) == DictConfig:
+            module_args[k] = build_module(module_args[k], modules_lib)
+
+    module_args.pop('module_name')
+    return module_cls(**module_args)
+
 
 ############################# UNET BASE ###################################
 
@@ -158,6 +171,10 @@ class UnetBasedModel(BaseModel):
             unet_block = UnetSkipConnectionBlock(
                 args_up=up_layer, args_innermost=opt.innermost, modules_lib=modules_lib, innermost=True,
             )
+        elif hasattr(opt, 'flat_innermost'):
+            # unet_block = getattr(modules_lib, opt.flat_innermost.module_name)(**opt.flat_innermost)
+            unet_block = build_module(opt.flat_innermost, modules_lib)
+
 
         for index in range(num_convs - 1, 0, -1):
             down_layer = dict(down_conv_layers[index])
@@ -177,7 +194,8 @@ class UnetBasedModel(BaseModel):
         up_layer["nb_feature"] = dataset.feature_dimension
         down_layer["nb_feature"] = dataset.feature_dimension
         self.model = UnetSkipConnectionBlock(
-            args_up=up_layer, args_down=down_layer, submodule=unet_block, outermost=True
+            args_up=up_layer, args_down=down_layer, submodule=unet_block, outermost=True,
+            modules_lib=modules_lib
         )
 
         self._save_sampling_and_search(self.model)
@@ -281,8 +299,10 @@ class UnetSkipConnectionBlock(nn.Module):
         else:
             downconv_cls = self.get_from_kwargs(args_down, "down_conv_cls")
             upconv_cls = self.get_from_kwargs(args_up, "up_conv_cls")
-            downconv = downconv_cls(**args_down)
-            upconv = upconv_cls(**args_up)
+            # downconv = downconv_cls(**args_down)
+            # upconv = upconv_cls(**args_up)
+            downconv = build_module(args_down, modules_lib)
+            upconv = build_module(args_up, modules_lib)
 
             self.down = downconv
             self.submodule = submodule

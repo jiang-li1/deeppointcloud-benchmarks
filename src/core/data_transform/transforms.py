@@ -11,7 +11,7 @@ from torch_geometric.nn import fps, radius, knn, voxel_grid
 from torch_geometric.nn.pool.consecutive import consecutive_cluster
 from torch_geometric.nn.pool.pool import pool_pos, pool_batch
 from torch_scatter import scatter_add, scatter_mean
-from src.datasets.multiscale_data import MultiScaleData
+from src.data.multiscale_data import MultiScaleData
 from src.utils.transform_utils import SamplingStrategy
 
 class ComputeKDTree(object):

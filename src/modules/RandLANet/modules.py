@@ -123,35 +123,35 @@ class RandLANetRes(torch.nn.Module):
     def forward(self, data):
         return self._conv.forward(data)
 
-class RandlaBlock(torch.nn.Module):
+class RandlaBlock(BaseModule):
 
     def __init__(self, *, 
         sampler: BaseSampler = None,
-        in_nn,
-        neighbour_finder_1: BaseNeighbourFinder,
+        in_reshape_nn,
+        neighbour_finder: BaseNeighbourFinder,
         rel_point_pos_nn_1,
         attention_nn_1,
         aggregation_nn_1,
-        neighbour_finder_2: BaseNeighbourFinder,
         rel_point_pos_nn_2,
         attention_nn_2,
         aggregation_nn_2,
-        skip_nn
+        skip_nn,
+        **kwargs
     ):
+        super().__init__()
 
         make_mlp = MLP
 
         self.sampler = sampler
-        self.in_nn = make_mlp(in_nn)
+        self.in_reshape_nn = make_mlp(in_reshape_nn)
+        self.neighbour_finder = neighbour_finder
 
-        self.neighbour_finder_1 = neighbour_finder_1
         self.kernel_1 = RandlaKernel(
             rel_point_pos_nn=rel_point_pos_nn_1,
             attention_nn=attention_nn_1,
             global_nn=aggregation_nn_1
         )
         
-        self.neighbour_finder_2 = neighbour_finder_2
         self.kernel_2 = RandlaKernel(
             rel_point_pos_nn=rel_point_pos_nn_2,
             attention_nn=attention_nn_2,
@@ -161,13 +161,40 @@ class RandlaBlock(torch.nn.Module):
         self.skip_nn = make_mlp(skip_nn)
 
     def forward(self, data):
+        batch_obj = Batch()
+        x, pos, batch = data.x, data.pos, data.batch
+        idx = self.sampler(data.pos, batch)
+        batch_obj.idx = idx
+
+        x = x[idx]
+        pos = pos[idx]
+        batch = batch[idx]
+
+        shortcut = x
+
+        x = self.in_reshape_nn(x)#(N, L_OUT//4)
+
+        row, col = self.neighbour_finder(pos, pos, batch, batch)
+        edge_index = torch.stack([col, row], dim=0)
+        x = self.kernel_1(x, pos, edge_index, batch)
+        x = self.kernel_2(x, pos, edge_index, batch)
         
+
+
+
+
+    def extra_repr(self):
+        return '\n'.join([
+            '(sampler): {}'.format(repr(self.sampler)),
+            '(neighbour_finder_1): {}'.format(repr(self.neighbour_finder_1)),
+            '(neighbour_finder_2): {}'.format(repr(self.neighbour_finder_2))
+        ])
         
 
-class RandlaBaseModule(torch.nn.Module):
+class RandlaBaseModule(BaseModule):
 
-    def __init__(self, *, nn):
-
+    def __init__(self, *, nn, **kwargs):
+        super().__init__()
         self.nn = MLP(nn)
 
     def forward(self, data):

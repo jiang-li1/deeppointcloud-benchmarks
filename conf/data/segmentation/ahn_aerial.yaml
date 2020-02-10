@@ -1,8 +1,8 @@
 data:
-    name: ahn_aerial
+    class: ahn_aerial_dataset.AHNAerialDataset
     dataroot: data
     scale: 10
     in_memory: False # needs ~ 64 GB
     patch_opt:
-        patch_diam: 50
+        patch_diam: 30
         context_dist: 2

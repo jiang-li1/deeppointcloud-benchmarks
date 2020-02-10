@@ -14,7 +14,7 @@ models:
             in_reshape_nn: [FEAT, L1_OUT // 4]
 
             #LocSE + Attentive Pooling 1: in = L1_OUT // 4, out = L1_OUT // 2
-            neighbour_finder_1:
+            neighbour_finder:
                 module_name: KNNNeighbourFinder
                 k: 16
             rel_point_pos_nn_1: [10, L1_OUT // 4, L1_OUT // 4]
@@ -22,9 +22,6 @@ models:
             aggregation_nn_1: [L1_OUT // 2, L1_OUT // 2]
 
             #LocSE + Attentive Pooling 2: in = L1_OUT // 2, out = L1_OUT
-            neighbour_finder_2:
-                module_name: KNNNeighbourFinder
-                k: 16
             rel_point_pos_nn_2: [10, L1_OUT // 2, L1_OUT // 2]
             attention_nn_2: [L1_OUT, 2 * L1_OUT, L1_OUT]
             aggregation_nn_2: [L1_OUT, L1_OUT] 
@@ -33,13 +30,13 @@ models:
         
           - module_name: RandlaBlock
             sampler:
-                class: RandomSampler
+                module_name: RandomSampler
                 ratio: 1/4
 
             in_reshape_nn: [L1_OUT, L2_OUT // 4]
 
             #LocSE + Attentive Pooling 1: in = L1_OUT, out = L2_OUT // 2
-            neighbour_finder_1:
+            neighbour_finder:
                 module_name: KNNNeighbourFinder
                 k: 16
             rel_point_pos_nn_1: [10, L2_OUT // 4, L2_OUT // 4]
@@ -47,13 +44,13 @@ models:
             aggregation_nn_1: [L2_OUT // 2, L2_OUT // 2]
 
             #LocSE + Attentive Pooling 2: in = L2_OUT // 2, out = L2_OUT
-            neighbour_finder_2:
-                module_name: KNNNeighbourFinder
-                k: 16
             rel_point_pos_nn_2: [10, L2_OUT // 2, L2_OUT // 2]
             attention_nn_2: [L2_OUT, 2 * L2_OUT, L2_OUT]
             aggregation_nn_2: [L2_OUT, L2_OUT] 
-        innermost:
+
+            skip_nn: [L1_OUT, L2_OUT]
+
+        flat_innermost:
             module_name: RandlaBaseModule
             nn: [L2_OUT, 2 * L2_OUT, L2_OUT]
         up_conv:
@@ -65,6 +62,9 @@ models:
             up_k: 1
             skip: True
             up_conv_nn: [2 * L1_OUT, CLS_MLP, CLS_MLP]
+        mlp_cls:
+            nn: [64, 64, 64, 64, 64]
+            dropout: 0.5
 
 
 
