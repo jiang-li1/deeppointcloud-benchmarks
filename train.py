@@ -7,7 +7,7 @@ import logging
 from omegaconf import OmegaConf
 
 # Import building function for model and dataset
-from src import find_model_using_name, find_dataset_using_name
+from src import instantiate_model, instantiate_dataset
 
 # Import BaseModel / BaseDataset for type checking
 from src.models.base_model import BaseModel
@@ -23,8 +23,10 @@ from src.utils.model_building_utils.model_definition_resolver import resolve_mod
 from src.utils.colors import COLORS
 from src.utils.config import set_format
 
+log = logging.getLogger(__name__)
 
-def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTracker, checkpoint: ModelCheckpoint, log):
+
+def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTracker, checkpoint: ModelCheckpoint):
     model.train()
     tracker.reset("train")
     train_loader = dataset.train_dataloader()
@@ -69,7 +71,7 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
     log.info("Learning rate = %f" % model.learning_rate)
 
 
-def eval_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint, log):
+def eval_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint):
     model.eval()
     tracker.reset("val")
     loader = dataset.val_dataloader()
@@ -88,7 +90,7 @@ def eval_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoi
     checkpoint.save_best_models_under_current_metrics(model, metrics)
 
 
-def test_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint, log):
+def test_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint):
     model.eval()
     tracker.reset("test")
     loader = dataset.test_dataloader()
@@ -113,15 +115,14 @@ def test_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoi
     checkpoint.save_best_models_under_current_metrics(model, metrics)
 
 
-def run(cfg, model, dataset: BaseDataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint, log):
+def run(cfg, model, dataset: BaseDataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint):
     for epoch in range(checkpoint.start_epoch, cfg.training.epochs):
         log.info("EPOCH %i / %i", epoch, cfg.training.epochs)
-        train_epoch(epoch, model, dataset, device, tracker, checkpoint, log)
-
+        train_epoch(epoch, model, dataset, device, tracker, checkpoint)
         if dataset.has_val_loader:
-            eval_epoch(model, dataset, device, tracker, checkpoint, log)
+            eval_epoch(model, dataset, device, tracker, checkpoint)
 
-        test_epoch(model, dataset, device, tracker, checkpoint, log)
+        test_epoch(model, dataset, device, tracker, checkpoint)
 
     # Single test evaluation in resume case
     if checkpoint.start_epoch >= cfg.training.epochs:
@@ -130,12 +131,12 @@ def run(cfg, model, dataset: BaseDataset, device, tracker: BaseTracker, checkpoi
 
 @hydra.main(config_path="conf/config.yaml")
 def main(cfg):
-    log = logging.getLogger(__name__)
-    print(cfg.pretty())
+    if cfg.pretty_print:
+        print(cfg.pretty())
 
     # Get device
     device = torch.device("cuda" if (torch.cuda.is_available() and cfg.training.cuda) else "cpu")
-    print("DEVICE : {}".format(device))
+    log.info("DEVICE : {}".format(device))
 
     # Get task and model_name
     tested_task = cfg.data.get('task', cfg.task)
@@ -152,23 +153,27 @@ def main(cfg):
 
     # Find and create associated dataset
     dataset_config = cfg.data
-    tested_dataset_name = dataset_config.name
+    tested_dataset_class = getattr(dataset_config, "class")
     dataset_config.dataroot = hydra.utils.to_absolute_path(dataset_config.dataroot)
-    dataset = find_dataset_using_name(tested_dataset_name, tested_task)(dataset_config, cfg_training)
+    dataset = instantiate_dataset(tested_dataset_class, tested_task)(dataset_config, cfg_training)
 
     # Find and create associated model
     resolve_model(model_config, dataset, tested_task)
-    model_config = OmegaConf.merge(model_config, cfg_training, dataset_config)
-    model = find_model_using_name(model_config.architecture, tested_task, model_config, dataset)
+    model_class = getattr(model_config, "class")
+    model_config = OmegaConf.merge(model_config, cfg_training)
+    model = instantiate_model(model_class, tested_task, model_config, dataset)
 
     log.info(model)
 
     # Optimizer
-    lr_params = cfg_training.learning_rate
-    model.set_optimizer(getattr(torch.optim, cfg_training.optimizer, None), lr_params=lr_params)
+    otimizer_class = getattr(cfg_training.optimizer, "class")
+    model.set_optimizer(
+        getattr(torch.optim, otimizer_class, None), cfg_training.optimizer.params, cfg_training.learning_rate
+    )
 
     # Set sampling / search strategies
-    dataset.set_strategies(model, precompute_multi_scale=cfg_training.precompute_multi_scale)
+    if cfg_training.precompute_multi_scale:
+        dataset.set_strategies(model)
 
     model = model.to(device)
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
@@ -194,7 +199,7 @@ def main(cfg):
     )
 
     # Run training / evaluation
-    run(cfg, model, dataset, device, tracker, checkpoint, log)
+    run(cfg, model, dataset, device, tracker, checkpoint)
 
 
 if __name__ == "__main__":

@@ -8,12 +8,18 @@ experiment_name: ahn_paper_pn2_50 #experiment name, used for saving outputs
 defaults:
   - task: segmentation # Task performed (segmentation, classification etc...)
     optional: True
+<<<<<<< HEAD
   - model_type: pointnet2 # Type of model to use, e.g. pointnet2, rsconv etc...
     optional: True
   - dataset: ahn_aerial
+=======
+  - model_type: randlanet # Type of model to use, e.g. pointnet2, rsconv etc...
+    optional: True
+  - dataset: s3dis
+>>>>>>> randlanet_dense
     optional: True
 
-  - training
+  - training: default
   - eval
 
   - models: ${defaults.0.task}/${defaults.1.model_type}
@@ -21,6 +27,7 @@ defaults:
   - sota # Contains current SOTA results on different datasets (extracted from papers !).
   - hydra/job_logging: custom
 
+<<<<<<< HEAD
 
 
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
@@ -32,3 +39,8 @@ wandb:
 # parameters for TensorBoard Visualization
 tensorboard:
   log: True
+=======
+model_name: Randlanet_Res # Name of the specific model to load
+
+pretty_print: False
+>>>>>>> randlanet_dense

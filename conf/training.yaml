@@ -9,7 +9,7 @@ training:
     optimizer: Adam
     learning_rate:
         scheduler_type: "step_decay"
-        base_lr: 0.001
+        base_lr: ${optimizer.params.lr}
         lr_decay: 0.5
         decay_step: 200000
         lr_clip: 1e-5

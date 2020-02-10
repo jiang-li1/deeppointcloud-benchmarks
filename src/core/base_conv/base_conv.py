@@ -1,12 +1,11 @@
 from abc import ABC
-import numpy as np
-import torch
+
+from src.core.common_modules.base_modules import BaseModule
 
 
-class BaseConvolution(ABC, torch.nn.Module):
+class BaseConvolution(ABC, BaseModule):
     def __init__(self, sampler, neighbour_finder, *args, **kwargs):
-        torch.nn.Module.__init__(self)
-
+        BaseModule.__init__(self)
         self.sampler = sampler
         self.neighbour_finder = neighbour_finder
 

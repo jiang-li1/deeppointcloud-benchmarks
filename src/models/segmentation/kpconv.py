@@ -8,6 +8,7 @@ from .base import Segmentation_MP
 from src.modules.KPConv import *
 from src.models.base_model import BaseModel
 from src.models.base_architectures.unet import UnwrappedUnetBasedModel
+from src.datasets.multiscale_data import MultiScaleBatch
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +40,11 @@ class KPConvPaper(UnwrappedUnetBasedModel):
             self.FC_layer.add_module(
                 str(i),
                 Sequential(
-                    *[Linear(in_feat, last_mlp_opt.nn[i], bias=False), LeakyReLU(0.2), BatchNorm1d(last_mlp_opt.nn[i])]
+                    *[
+                        Linear(in_feat, last_mlp_opt.nn[i], bias=False),
+                        BatchNorm1d(last_mlp_opt.nn[i], momentum=last_mlp_opt.bn_momentum),
+                        LeakyReLU(0.2),
+                    ]
                 ),
             )
             in_feat = last_mlp_opt.nn[i]
@@ -58,9 +63,17 @@ class KPConvPaper(UnwrappedUnetBasedModel):
         if hasattr(data, "x"):
             ones = torch.ones(data.x.shape[0], dtype=torch.float).unsqueeze(-1).to(data.x.device)
             data.x = torch.cat([ones, data.x], dim=-1)
+
+        if isinstance(data, MultiScaleBatch):
+            self.pre_computed = data.multiscale
+            del data.multiscale
+        else:
+            self.pre_computed = None
+
         self.input = data
         self.labels = data.y
         self.batch_idx = data.batch
+
         if self._use_category:
             self.category = data.category
 
@@ -70,10 +83,10 @@ class KPConvPaper(UnwrappedUnetBasedModel):
 
         data = self.input
         for i in range(len(self.down_modules) - 1):
-            data = self.down_modules[i](data)
+            data = self.down_modules[i](data, pre_computed=self.pre_computed)
             stack_down.append(data)
 
-        data = self.down_modules[-1](data)
+        data = self.down_modules[-1](data, pre_computed=self.pre_computed)
         for i in range(len(self.up_modules)):
             data = self.up_modules[i]((data, stack_down.pop()))
 
@@ -94,10 +107,6 @@ class KPConvPaper(UnwrappedUnetBasedModel):
             self._weight_classes = self._weight_classes.to(self.output.device)
         self.loss_seg = F.nll_loss(self.output, self.labels, weight=self._weight_classes) + self.get_internal_loss()
 
-        if torch.isnan(self.loss_seg):
-            import pdb
-
-            pdb.set_trace()
         self.loss_seg.backward()  # calculate gradients of network G w.r.t. loss_G
 
 
@@ -105,6 +114,23 @@ class KPConvSeg(Segmentation_MP):
     """ Basic implementation of KPConv"""
 
     def set_input(self, data):
+        if isinstance(data, MultiScaleBatch):
+            self.pre_computed = data.multiscale
+            del data.multiscale
+        else:
+            self.pre_computed = None
+
         self.input = data
         self.batch_idx = data.batch
         self.labels = data.y
+
+    def forward(self) -> Any:
+        """Run forward pass. This will be called by both functions <optimize_parameters> and <test>."""
+        data = self.model(self.input, pre_computed=self.pre_computed)
+        x = F.relu(self.lin1(data.x))
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.lin2(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.lin3(x)
+        self.output = F.log_softmax(x, dim=-1)
+        return self.output

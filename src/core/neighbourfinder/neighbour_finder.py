@@ -128,7 +128,7 @@ class MultiscaleRadiusNeighbourFinder(BaseMSNeighbourFinder):
         # print(batch_x.sum(), batch_y.sum())
         # print(self._radius[scale_idx])
         return radius(
-            x, y, self._radius[scale_idx], batch_x, batch_y, max_num_neighbors=self._max_num_neighbors[scale_idx],
+            x, y, self._radius[scale_idx], batch_x, batch_y, max_num_neighbors=self._max_num_neighbors[scale_idx]
         )
 
     @property
@@ -170,3 +170,14 @@ class DenseRadiusNeighbourFinder(MultiscaleRadiusNeighbourFinder):
         """ Dense interface of the neighboorhood finder
         """
         return self.find_neighbours(x, y, scale_idx)
+
+
+class DenseKNNNeighbourFinder(BaseNeighbourFinder):
+    def __init__(self, k):
+        raise NotImplementedError
+
+    def find_neighbours(self, x, y, batch_x, batch_y):
+        raise NotImplementedError
+
+    def __call__(self, x, y, batch_x=None, batch_y=None):
+        self.find_neighbours(x, y, batch_x, batch_y)

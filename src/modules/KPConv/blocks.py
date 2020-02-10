@@ -2,13 +2,13 @@ import torch
 import sys
 
 from .kernels import KPConvLayer
-from src.core.common_modules.base_modules import UnaryConv
+from src.core.common_modules.base_modules import UnaryConv, BaseModule
 from src.core.neighbourfinder import RadiusNeighbourFinder
 from src.core.data_transform import GridSampling
 from src.utils.enums import ConvolutionFormat
 
 
-class SimpleBlock(torch.nn.Module):
+class SimpleBlock(BaseModule):
     """
     simple layer with KPConv convolution -> activation -> BN
     we can perform a stride version (just change the query and the neighbors)
@@ -25,7 +25,7 @@ class SimpleBlock(torch.nn.Module):
         density_parameter=2.5,
         max_num_neighbors=16,
         activation=torch.nn.LeakyReLU(negative_slope=0.2),
-        bn_momentum=0.1,
+        bn_momentum=0.02,
         bn=torch.nn.BatchNorm1d,
         **kwargs
     ):
@@ -47,31 +47,40 @@ class SimpleBlock(torch.nn.Module):
         else:
             self.sampler = None
 
-    def forward(self, data):
-        if self.sampler:
-            querry_data = self.sampler(data.clone())
-        else:
-            querry_data = data
+    def forward(self, data, pre_computed=None, **kwargs):
+        if not hasattr(data, "block_idx"):
+            setattr(data, "block_idx", 0)
 
-        q_pos, q_batch = querry_data.pos, querry_data.batch
-        # if hasattr(data, "idx_neighboors") and data.idx_neighboors.shape[0] == q_pos.shape[0]:
-        #     idx_neighboors = data.idx_neighboors
-        # else:
-        idx_neighboors, _ = self.neighbour_finder(data.pos, q_pos, batch_x=data.batch, batch_y=q_batch)
+        if pre_computed:
+            query_data = pre_computed[data.block_idx]
+        else:
+            if self.sampler:
+                query_data = self.sampler(data.clone())
+            else:
+                query_data = data.clone()
+
+        if pre_computed:
+            idx_neighboors = query_data.idx_neighboors
+            q_pos = query_data.pos
+        else:
+            q_pos, q_batch = query_data.pos, query_data.batch
+            idx_neighboors, _ = self.neighbour_finder(data.pos, q_pos, batch_x=data.batch, batch_y=q_batch)
+            query_data.idx_neighboors = idx_neighboors
+
         x = self.kp_conv(q_pos, data.pos, idx_neighboors, data.x,)
         if self.bn:
             x = self.bn(x)
         x = self.activation(x)
 
-        querry_data.x = x
-        querry_data.idx_neighboors = idx_neighboors
-        return querry_data
+        query_data.x = x
+        query_data.block_idx = data.block_idx + 1
+        return query_data
 
     def extra_repr(self):
-        return str(self.sampler) + "," + str(self.neighbour_finder)
+        return "Nb parameters: %i, %s, %s" % (self.nb_params, str(self.sampler), str(self.neighbour_finder))
 
 
-class ResnetBBlock(torch.nn.Module):
+class ResnetBBlock(BaseModule):
     """ Resnet block with optional bottleneck activated by default
 
     Arguments:
@@ -101,7 +110,7 @@ class ResnetBBlock(torch.nn.Module):
         max_num_neighbors=16,
         activation=torch.nn.LeakyReLU(negative_slope=0.2),
         has_bottleneck=True,
-        bn_momentum=0.1,
+        bn_momentum=0.02,
         bn=torch.nn.BatchNorm1d,
         **kwargs
     ):
@@ -115,8 +124,6 @@ class ResnetBBlock(torch.nn.Module):
         self.is_strided = is_strided
         self.grid_size = grid_size
         self.has_bottleneck = has_bottleneck
-        if self.is_strided:
-            self.sampler = GridSampling(grid_size)
 
         # Main branch
         if self.has_bottleneck:
@@ -151,18 +158,18 @@ class ResnetBBlock(torch.nn.Module):
         # Shortcut
         if num_inputs != num_outputs:
             if bn:
-                self.shortcut_op = UnaryConv(num_inputs, num_outputs)
-            else:
                 self.shortcut_op = torch.nn.Sequential(
                     UnaryConv(num_inputs, num_outputs), bn(num_outputs, momentum=bn_momentum)
                 )
+            else:
+                self.shortcut_op = UnaryConv(num_inputs, num_outputs)
         else:
             self.shortcut_op = torch.nn.Identity()
 
         # Final activation
         self.activation = activation
 
-    def forward(self, data):
+    def forward(self, data, pre_computed=None, **kwargs):
         """
             data: x, pos, batch_idx and idx_neighbour when the neighboors of each point in pos have already been computed
         """
@@ -171,7 +178,7 @@ class ResnetBBlock(torch.nn.Module):
         shortcut_x = data.x
         if self.has_bottleneck:
             output.x = self.unary_1(output.x)
-        output = self.kp_conv(output)
+        output = self.kp_conv(output, pre_computed=pre_computed)
         if self.has_bottleneck:
             output.x = self.unary_2(output.x)
 
@@ -186,10 +193,28 @@ class ResnetBBlock(torch.nn.Module):
         output.x += shortcut
         return output
 
+    @property
+    def sampler(self):
+        return self.kp_conv.sampler
 
-class KPDualBlock(torch.nn.Module):
+    @property
+    def neighbour_finder(self):
+        return self.kp_conv.neighbour_finder
+
+    def extra_repr(self):
+        return "Nb parameters: %i, %s, %s" % (self.nb_params, str(self.sampler), str(self.neighbour_finder))
+
+
+class KPDualBlock(BaseModule):
     def __init__(
-        self, block_names=None, down_conv_nn=None, grid_size=None, is_strided=None, has_bottleneck=None, **kwargs
+        self,
+        block_names=None,
+        down_conv_nn=None,
+        grid_size=None,
+        is_strided=None,
+        has_bottleneck=None,
+        max_num_neighbors=None,
+        **kwargs
     ):
         super(KPDualBlock, self).__init__()
 
@@ -202,10 +227,22 @@ class KPDualBlock(torch.nn.Module):
                 grid_size=grid_size[i],
                 is_strided=is_strided[i],
                 has_bottleneck=has_bottleneck[i],
+                max_num_neighbors=max_num_neighbors[i],
             )
             self.blocks.append(block)
 
-    def forward(self, data):
+    def forward(self, data, pre_computed=None, **kwargs):
         for block in self.blocks:
-            data = block(data)
+            data = block(data, pre_computed=pre_computed)
         return data
+
+    @property
+    def sampler(self):
+        return [b.sampler for b in self.blocks]
+
+    @property
+    def neighbour_finder(self):
+        return [b.neighbour_finder for b in self.blocks]
+
+    def extra_repr(self):
+        return "Nb parameters: %i" % self.nb_params

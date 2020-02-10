@@ -2,7 +2,7 @@ models:
     # KPConv: Flexible and Deformable Convolution for Point Clouds (https://arxiv.org/abs/1904.08889)
     # KPConv support format_type="[PARTIAL_DENSE | MESSAGE_PASSING]"
     SimpleKPConv:
-        architecture: kpconv.KPConvSeg
+        class: kpconv.KPConvSeg
         conv_type: "MESSAGE_PASSING"
         down_conv:
             module_name: KPConv
@@ -23,7 +23,7 @@ models:
             dropout: 0.5
 
     PDSimpleKPConv:
-        architecture: kpconv.KPConvSeg
+        class: kpconv.KPConvSeg
         conv_type: "PARTIAL_DENSE"
         down_conv:
             module_name: ResnetBBlock
@@ -46,7 +46,7 @@ models:
             dropout: 0.5
 
     Resnet_BK_PD_KPConv:
-        architecture: kpconv.KPConvSeg
+        class: kpconv.KPConvSeg
         conv_type: "PARTIAL_DENSE"
         down_conv:
             module_name: ResnetBottleNeckPartialDense
@@ -75,7 +75,7 @@ models:
             dropout: 0.5
 
     ResidualKPConv:
-        architecture: kpconv.KPConvSeg
+        class: kpconv.KPConvSeg
         conv_type: "MESSAGE_PASSING"
         down_conv:
             module_name: ResidualBKPConv
@@ -97,7 +97,7 @@ models:
             dropout: 0.5
 
     DeformableResidualKPConv:
-        architecture: kpconv.KPConvSeg
+        class: kpconv.KPConvSeg
         conv_type: "MESSAGE_PASSING"
         down_conv:
             module_name: LightDeformableKPConv
@@ -119,12 +119,13 @@ models:
             dropout: 0.5
 
     KPConvPaper:
-        architecture: kpconv.KPConvPaper
+        class: kpconv.KPConvPaper
         conv_type: "PARTIAL_DENSE"
-        use_category: True
         define_constants:
+            use_category: ${data.use_category}
             in_grid_size: ${data.first_subsampling}
             in_feat: 64
+            bn_momentum: 0.02
         down_conv:
             down_conv_nn:
                 [
@@ -166,6 +167,8 @@ models:
                     [True, True],
                     [True, True],
                 ]
+            max_num_neighbors:
+                [[12, 12], [25, 25], [38, 38], [36, 36], [32, 32]]
             module_name: KPDualBlock
         up_conv:
             module_name: FPModule
@@ -178,6 +181,15 @@ models:
                 ]
             skip: True
             up_k: [1, 1, 1, 1]
+            bn_momentum:
+                [
+                    bn_momentum,
+                    bn_momentum,
+                    bn_momentum,
+                    bn_momentum,
+                    bn_momentum,
+                ]
         mlp_cls:
-            nn: [in_feat, in_feat]
+            nn: [in_feat, 2*in_feat, 4* in_feat]
             dropout: 0.5
+            bn_momentum: bn_momentum
