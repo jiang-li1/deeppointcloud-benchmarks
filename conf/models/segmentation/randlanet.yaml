@@ -57,7 +57,7 @@ models:
           - module_name: FPModule
             up_k: 1
             skip: True
-            up_conv_nn: [2 * L1_OUT, L1_OUT, L1_OUT]
+            up_conv_nn: [2 * L2_OUT, L1_OUT, L1_OUT]
           - module_name: FPModule
             up_k: 1
             skip: True
@@ -65,6 +65,211 @@ models:
         mlp_cls:
             nn: [64, 64, 64, 64, 64]
             dropout: 0.5
+
+    Randlanet_ahn_small:
+        # Note: concat pos to x, so that FEAT = len(pos) + len(x) 
+        class: randlanet.RandLANetSeg
+        conv_type: "MESSAGE_PASSING"
+        define_constants:
+            L1_OUT: 16
+            L2_OUT: 32
+            CLS_MLP: 64
+        down_conv:
+          - module_name: RandlaBlock
+
+            in_reshape_nn: [FEAT, L1_OUT // 4]
+
+            #LocSE + Attentive Pooling 1: in = L1_OUT // 4, out = L1_OUT // 2
+            neighbour_finder:
+                module_name: KNNNeighbourFinder
+                k: 16
+            rel_point_pos_nn_1: [10, L1_OUT // 4, L1_OUT // 4]
+            attention_nn_1: [L1_OUT // 2, L1_OUT, L1_OUT // 2]
+            aggregation_nn_1: [L1_OUT // 2, L1_OUT // 2]
+
+            #LocSE + Attentive Pooling 2: in = L1_OUT // 2, out = L1_OUT
+            rel_point_pos_nn_2: [10, L1_OUT // 2, L1_OUT // 2]
+            attention_nn_2: [L1_OUT, 2 * L1_OUT, L1_OUT]
+            aggregation_nn_2: [L1_OUT, L1_OUT] 
+
+            skip_nn: [FEAT, L1_OUT]
+        
+          - module_name: RandlaBlock
+            sampler:
+                module_name: RandomSampler
+                ratio: 1/8
+
+            in_reshape_nn: [L1_OUT, L2_OUT // 4]
+
+            #LocSE + Attentive Pooling 1: in = L1_OUT, out = L2_OUT // 2
+            neighbour_finder:
+                module_name: KNNNeighbourFinder
+                k: 16
+            rel_point_pos_nn_1: [10, L2_OUT // 4, L2_OUT // 4]
+            attention_nn_1: [L2_OUT // 2, L2_OUT, L2_OUT // 2]
+            aggregation_nn_1: [L2_OUT // 2, L2_OUT // 2]
+
+            #LocSE + Attentive Pooling 2: in = L2_OUT // 2, out = L2_OUT
+            rel_point_pos_nn_2: [10, L2_OUT // 2, L2_OUT // 2]
+            attention_nn_2: [L2_OUT, 2 * L2_OUT, L2_OUT]
+            aggregation_nn_2: [L2_OUT, L2_OUT] 
+
+            skip_nn: [L1_OUT, L2_OUT]
+
+        flat_innermost:
+            module_name: RandlaBaseModule
+            nn: [L2_OUT, 2 * L2_OUT, L2_OUT]
+        up_conv:
+          - module_name: FPModule
+            up_k: 1
+            skip: True
+            up_conv_nn: [2 * L2_OUT, L1_OUT, L1_OUT]
+          - module_name: FPModule
+            up_k: 1
+            skip: True
+            up_conv_nn: [2 * L1_OUT, CLS_MLP, CLS_MLP]
+        mlp_cls:
+            nn: [64, 64, 64, 64, 64]
+            dropout: 0.5
+
+    Randlanet_ahn:
+        # Note: concat pos to x, so that FEAT = len(pos) + len(x) 
+        class: randlanet.RandLANetSeg
+        conv_type: "MESSAGE_PASSING"
+        define_constants:
+            L1_OUT: 16
+            L2_OUT: 32
+            L3_OUT: 128
+            L4_OUT: 256
+            L2_SAMP: 1/16
+            L3_SAMP: 1/4
+            L4_SAMP: 1/4
+            L1_K: 16
+            L2_K: 32
+            L3_K: 32
+            L4_K: 64
+            CLS_MLP: 64
+        # L1: (N, FEAT) -(16)> (N, 16) - get course features which encode some geometric information about every point
+        # L2: (N, 16) -(32)> (N/16, 32) - build more detailed features for 1/16 points
+        # L3: (N/16, 32) -(32)> (N/64, 128) - 
+        # L4: (N/256, 128) -(64)> (N/512, 256) - try to get global information by looking accross many distance points
+
+        down_conv:
+          - module_name: RandlaBlock
+
+            in_reshape_nn: [FEAT, L1_OUT // 4]
+
+            #LocSE + Attentive Pooling 1: in = L1_OUT // 4, out = L1_OUT // 2
+            neighbour_finder:
+                module_name: KNNNeighbourFinder
+                k: L1_K
+            rel_point_pos_nn_1: [10, L1_OUT // 4, L1_OUT // 4]
+            attention_nn_1: [L1_OUT // 2, L1_OUT, L1_OUT // 2]
+            aggregation_nn_1: [L1_OUT // 2, L1_OUT // 2]
+
+            #LocSE + Attentive Pooling 2: in = L1_OUT // 2, out = L1_OUT
+            rel_point_pos_nn_2: [10, L1_OUT // 2, L1_OUT // 2]
+            attention_nn_2: [L1_OUT, 2 * L1_OUT, L1_OUT]
+            aggregation_nn_2: [L1_OUT, L1_OUT] 
+
+            skip_nn: [FEAT, L1_OUT]
+        
+          - module_name: RandlaBlock
+            sampler:
+                module_name: RandomSampler
+                ratio: L2_SAMP
+                min_num_to_sample: 128
+
+            in_reshape_nn: [L1_OUT, L2_OUT // 4]
+
+            #LocSE + Attentive Pooling 1: in = L1_OUT, out = L2_OUT // 2
+            neighbour_finder:
+                module_name: KNNNeighbourFinder
+                k: L2_K
+            rel_point_pos_nn_1: [10, L2_OUT // 4, L2_OUT // 4]
+            attention_nn_1: [L2_OUT // 2, L2_OUT, L2_OUT // 2]
+            aggregation_nn_1: [L2_OUT // 2, L2_OUT // 2]
+
+            #LocSE + Attentive Pooling 2: in = L2_OUT // 2, out = L2_OUT
+            rel_point_pos_nn_2: [10, L2_OUT // 2, L2_OUT // 2]
+            attention_nn_2: [L2_OUT, 2 * L2_OUT, L2_OUT]
+            aggregation_nn_2: [L2_OUT, L2_OUT] 
+
+            skip_nn: [L1_OUT, L2_OUT]
+
+          - module_name: RandlaBlock
+            sampler:
+                module_name: RandomSampler
+                ratio: L3_SAMP
+                min_num_to_sample: 32
+
+            in_reshape_nn: [L2_OUT, L3_OUT // 4]
+
+            #LocSE + Attentive Pooling 1: in = L2_OUT, out = L3_OUT // 2
+            neighbour_finder:
+                module_name: KNNNeighbourFinder
+                k: L3_K
+            rel_point_pos_nn_1: [10, L3_OUT // 4, L3_OUT // 4]
+            attention_nn_1: [L3_OUT // 2, L3_OUT, L3_OUT // 2]
+            aggregation_nn_1: [L3_OUT // 2, L3_OUT // 2]
+
+            #LocSE + Attentive Pooling 2: in = L3_OUT // 2, out = L3_OUT
+            rel_point_pos_nn_2: [10, L3_OUT // 2, L3_OUT // 2]
+            attention_nn_2: [L3_OUT, 2 * L3_OUT, L3_OUT]
+            aggregation_nn_2: [L3_OUT, L3_OUT] 
+
+            skip_nn: [L2_OUT, L3_OUT]
+
+          - module_name: RandlaBlock
+            sampler:
+                module_name: RandomSampler
+                ratio: L4_SAMP
+                min_num_to_sample: 8
+
+            in_reshape_nn: [L3_OUT, L4_OUT // 4]
+
+            #LocSE + Attentive Pooling 1: in = L3_OUT, out = L4_OUT // 2
+            neighbour_finder:
+                module_name: KNNNeighbourFinder
+                k: L4_K
+            rel_point_pos_nn_1: [10, L4_OUT // 4, L4_OUT // 4]
+            attention_nn_1: [L4_OUT // 2, L4_OUT, L4_OUT // 2]
+            aggregation_nn_1: [L4_OUT // 2, L4_OUT // 2]
+
+            #LocSE + Attentive Pooling 2: in = L4_OUT // 2, out = L4_OUT
+            rel_point_pos_nn_2: [10, L4_OUT // 2, L4_OUT // 2]
+            attention_nn_2: [L4_OUT, 2 * L4_OUT, L4_OUT]
+            aggregation_nn_2: [L4_OUT, L4_OUT] 
+
+            skip_nn: [L3_OUT, L4_OUT]
+
+        flat_innermost:
+            module_name: RandlaBaseModule
+            nn: [L4_OUT, 2 * L4_OUT, L4_OUT]
+        up_conv:
+          - module_name: FPModule
+            up_k: 1
+            skip: True
+            up_conv_nn: [2 * L4_OUT, L3_OUT, L3_OUT]
+          - module_name: FPModule
+            up_k: 1
+            skip: True
+            up_conv_nn: [2 * L3_OUT, L2_OUT, L2_OUT]
+          - module_name: FPModule
+            up_k: 1
+            skip: True
+            up_conv_nn: [2 * L2_OUT, L1_OUT, L1_OUT]
+          - module_name: FPModule
+            up_k: 1
+            skip: True
+            up_conv_nn: [2 * L1_OUT, CLS_MLP, CLS_MLP]
+        mlp_cls:
+            nn: [64, 64, 64, 64, 64]
+            dropout: 0.5
+        loss_module:
+            module_name: FocalLoss
+            gamma: 2
+
 
 
 

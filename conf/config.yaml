@@ -1,4 +1,4 @@
-model_name: Randlanet_mp # Name of the specific model to load
+model_name: Randlanet_ahn # Name of the specific model to load
 model_type: randlanet
 dataset: ahn_aerial
 task: segmentation

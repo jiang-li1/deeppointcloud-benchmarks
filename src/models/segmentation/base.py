@@ -2,8 +2,11 @@ import logging
 import torch
 import torch.nn.functional as F
 from typing import Any
+import importlib
 
 from src.models.base_architectures import UnetBasedModel
+
+from src.utils.module_builder import build_module
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +23,6 @@ class Segmentation_MP(UnetBasedModel):
         UnetBasedModel.__init__(
             self, option, model_type, dataset, modules
         )  # call the initialization method of UnetBasedModel
-
         nn = option.mlp_cls.nn
         self.dropout = option.mlp_cls.get("dropout")
         self.lin1 = torch.nn.Linear(nn[0], nn[1])
@@ -28,6 +30,11 @@ class Segmentation_MP(UnetBasedModel):
         self.lin3 = torch.nn.Linear(nn[4], dataset.num_classes)
 
         self.loss_names = ["loss_seg"]
+
+        if 'loss_module' in option:
+            self.loss_module = build_module(option.loss_module, importlib.import_module("src.core.losses.losses"))
+        else:
+            self.loss_module = None
 
     def set_input(self, data):
         """Unpack input data from the dataloader and perform necessary pre-processing steps.
@@ -54,6 +61,10 @@ class Segmentation_MP(UnetBasedModel):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         # caculate the intermediate results if necessary; here self.output has been computed during function <forward>
         # calculate loss given the input and intermediate results
-        self.loss_seg = F.nll_loss(self.output, self.labels) + self.get_internal_loss()
+
+        if self.loss_module is not None:
+            self.loss_seg = self.loss_module(self.output, self.labels) + self.get_internal_loss()
+        else:
+            self.loss_seg = F.nll_loss(self.output, self.labels) + self.get_internal_loss()
 
         self.loss_seg.backward()  # calculate gradients of network G w.r.t. loss_G

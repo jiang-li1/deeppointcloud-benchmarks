@@ -38,7 +38,7 @@ class RandlaKernel(MessagePassing):
 
         relPointPos = torch.cat([pos_i, pos_j, vij, dij], dim=1)
 
-        rij = self.point_pos_nn(relPointPos)
+        rij = self.rel_point_pos_nn(relPointPos)
 
         # concatenate position encoding with feature vector
         fij_hat = torch.cat([x_j, rij], dim=1)
@@ -163,31 +163,38 @@ class RandlaBlock(BaseModule):
     def forward(self, data):
         batch_obj = Batch()
         x, pos, batch = data.x, data.pos, data.batch
-        idx = self.sampler(data.pos, batch)
-        batch_obj.idx = idx
 
-        x = x[idx]
-        pos = pos[idx]
-        batch = batch[idx]
+        if self.sampler is not None:
+            idx = self.sampler(data.pos, batch)
+            batch_obj.idx = idx
+            x = x[idx]
+            pos = pos[idx]
+            batch = batch[idx]
 
         shortcut = x
 
-        x = self.in_reshape_nn(x)#(N, L_OUT//4)
+        x = self.in_reshape_nn(x) # (N, L_OUT//4)
 
         row, col = self.neighbour_finder(pos, pos, batch, batch)
         edge_index = torch.stack([col, row], dim=0)
-        x = self.kernel_1(x, pos, edge_index, batch)
-        x = self.kernel_2(x, pos, edge_index, batch)
-        
+        x = self.kernel_1(x, pos, edge_index) # (N, L_OUT//2)
+        x = self.kernel_2(x, pos, edge_index) # (N, L_OUT)
 
+        shortcut = self.skip_nn(shortcut) # (N, L_OUT)
+        x = shortcut + x
+
+        batch_obj.x = x
+        batch_obj.pos = pos
+        batch_obj.batch = batch
+        copy_from_to(data, batch_obj)
+        return batch_obj
 
 
 
     def extra_repr(self):
         return '\n'.join([
             '(sampler): {}'.format(repr(self.sampler)),
-            '(neighbour_finder_1): {}'.format(repr(self.neighbour_finder_1)),
-            '(neighbour_finder_2): {}'.format(repr(self.neighbour_finder_2))
+            '(neighbour_finder): {}'.format(repr(self.neighbour_finder)),
         ])
         
 
@@ -198,5 +205,6 @@ class RandlaBaseModule(BaseModule):
         self.nn = MLP(nn)
 
     def forward(self, data):
-        pass
+        data.x = self.nn(data.x)
+        return data
 

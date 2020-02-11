@@ -4,5 +4,5 @@ data:
     scale: 10
     in_memory: False # needs ~ 64 GB
     patch_opt:
-        patch_diam: 30
+        patch_diam: 15
         context_dist: 2

@@ -16,6 +16,17 @@ from src.utils.colors import COLORS
 # A logger for this file
 log = logging.getLogger(__name__)
 
+def batch_from_data_list_with_name(datalist):
+
+    names = []
+    for d in datalist:
+        names.append(d.name)
+        delattr(d, 'name')
+
+    batch = torch_geometric.data.batch.Batch.from_data_list(datalist)
+    batch.name = ' '.join(names)
+    return batch
+
 class BaseDataset:
     def __init__(self, dataset_opt, training_opt):
         self.dataset_opt = dataset_opt
@@ -60,7 +71,8 @@ class BaseDataset:
             conv_type == ConvolutionFormat.PARTIAL_DENSE.value[-1].lower()
             or conv_type == ConvolutionFormat.MESSAGE_PASSING.value[-1].lower()
         ):
-            return lambda datalist: torch_geometric.data.batch.Batch.from_data_list(datalist)
+            # return lambda datalist: torch_geometric.data.batch.Batch.from_data_list(datalist)
+            return batch_from_data_list_with_name
         elif conv_type == ConvolutionFormat.DENSE.value[-1].lower():
             return lambda datalist: SimpleBatch.from_data_list(datalist)
 

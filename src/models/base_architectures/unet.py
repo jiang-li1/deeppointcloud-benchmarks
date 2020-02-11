@@ -178,7 +178,9 @@ class UnetBasedModel(BaseModel):
 
         for index in range(num_convs - 1, 0, -1):
             down_layer = dict(down_conv_layers[index])
-            up_layer = dict(up_conv_layers[num_convs - index])
+            up_layer = dict(up_conv_layers[
+                num_convs - index - (0 if contains_global else 1)
+            ])
 
             down_layer["down_conv_cls"] = getattr(modules_lib, down_layer["module_name"])
             up_layer["up_conv_cls"] = getattr(modules_lib, up_layer["module_name"])
@@ -309,6 +311,7 @@ class UnetSkipConnectionBlock(nn.Module):
             self.up = upconv
 
     def forward(self, data, **kwargs):
+        # import pdb; pdb.set_trace()
         if self.innermost:
             data_out = self.inner(data, **kwargs)
             data = (data_out, data)
@@ -316,7 +319,7 @@ class UnetSkipConnectionBlock(nn.Module):
         else:
             data_out = self.down(data, **kwargs)
             data_out2 = self.submodule(data_out, **kwargs)
-            data = (data_out2, data)
+            data = (data_out2, data_out)
             return self.up(data, **kwargs)
 
 

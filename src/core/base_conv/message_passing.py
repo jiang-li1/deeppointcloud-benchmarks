@@ -111,6 +111,8 @@ class BaseConvolutionUp(BaseConvolution):
     def forward(self, data, **kwargs):
         batch_obj = Batch()
         data, data_skip = data
+        # print('data:', data)
+        # print('data_skip:', data_skip)
         x, pos, batch = data.x, data.pos, data.batch
         x_skip, pos_skip, batch_skip = data_skip.x, data_skip.pos, data_skip.batch
 
@@ -167,7 +169,6 @@ class FPModule(BaseConvolutionUp):
 
     def __init__(self, up_k, up_conv_nn, nb_feature=None, *args, **kwargs):
         super(FPModule, self).__init__(None)
-
         self.k = up_k
         bn_momentum = kwargs.get("bn_momentum", 0.1)
         self.nn = MLP(up_conv_nn, bn_momentum=bn_momentum, bias=False)

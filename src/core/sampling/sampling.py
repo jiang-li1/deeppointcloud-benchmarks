@@ -15,7 +15,7 @@ class BaseSampler(ABC):
         num_to_sample points. Otherwise sample floor(pos[0] * ratio) points
     """
 
-    def __init__(self, ratio=None, num_to_sample=None, subsampling_param=None):
+    def __init__(self, ratio=None, num_to_sample=None, subsampling_param=None, min_num_to_sample=None):
         if num_to_sample is not None:
             if (ratio is not None) or (subsampling_param is not None):
                 raise ValueError("Can only specify ratio or num_to_sample or subsampling_param, not several !")
@@ -30,6 +30,8 @@ class BaseSampler(ABC):
         else:
             raise Exception('At least ["ratio, num_to_sample, subsampling_param"] should be defined')
 
+        self.min_num_to_sample = min_num_to_sample
+
     def __call__(self, pos, x=None, batch=None):
         return self.sample(pos, batch=batch, x=x)
 
@@ -37,7 +39,10 @@ class BaseSampler(ABC):
         if hasattr(self, "_num_to_sample"):
             return self._num_to_sample
         else:
-            return math.floor(batch_size * self._ratio)
+            s = math.floor(batch_size * self._ratio)
+            if self.min_num_to_sample is not None:
+                return max(s, self.min_num_to_sample)
+            return s
 
     def _get_ratio_to_sample(self, batch_size) -> float:
         if hasattr(self, "_ratio"):

@@ -39,7 +39,7 @@ class Grid2DPatchableCloud(BasePatchablePointCloud):
 
         pos: torch.tensor = self.pos[block_idx].to(torch.float)
 
-        if pos.shape[0] < self.min_patch_size:
+        if pos.shape[0] < self.min_patch_size or inner_idx.shape[0] < self.min_patch_size:
             raise InvalidIndexError("Patch at index: {} has {} (< min_patch_size) points".format(index, pos.shape[0]))
 
         xyMid = self._get_block_mid_for_idx(index)
@@ -50,7 +50,7 @@ class Grid2DPatchableCloud(BasePatchablePointCloud):
 
         d = torch_geometric.data.Data(
             pos = pos.contiguous(), 
-            x = self.features[block_idx].to(torch.float).contiguous(),
+            x = torch.cat([self.features[block_idx].to(torch.float), pos], dim=1).contiguous(),
             y = self.data.y[block_idx].to(torch.long).contiguous(),
             inner_idx = inner_idx.contiguous(),
         )

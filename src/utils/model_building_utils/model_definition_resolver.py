@@ -15,7 +15,9 @@ def resolve_model(model_config, dataset, tested_task):
 
     # user defined contants to subsitute
     if "define_constants" in model_config.keys():
-        constants.update(dict(model_config.define_constants))
+        custom_constants = dict(model_config.define_constants)
+        _resolve(custom_constants, constants)
+        constants.update(custom_constants)
 
     _resolve(model_config, constants)
 
@@ -24,9 +26,9 @@ def _resolve(obj, constants):
     """ Resolves expressions and constants in obj.
     returns False if obj is a ListConfig or DictConfig, True is obj is a primative type.
     """
-    if type(obj) == DictConfig:
+    if type(obj) == DictConfig or type(obj) == dict:
         it = (k for k in obj)
-    elif type(obj) == ListConfig:
+    elif type(obj) == ListConfig or type(obj) == list:
         it = range(len(obj))
     else:
         # obj is a single element
