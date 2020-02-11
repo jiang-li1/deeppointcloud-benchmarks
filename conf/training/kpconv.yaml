@@ -15,7 +15,7 @@ training:
             lr: 0.01
     learning_rate:
         scheduler_type: "exponential_decay"
-        base_lr: ${optimizer.params.lr}
+        base_lr: 0.01
         gamma: 0.9716 # Divide learning by 10 every 80 epochs
         decay_step: 14016
         lr_clip: 1e-5
