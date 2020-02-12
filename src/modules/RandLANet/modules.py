@@ -189,8 +189,6 @@ class RandlaBlock(BaseModule):
         copy_from_to(data, batch_obj)
         return batch_obj
 
-
-
     def extra_repr(self):
         return '\n'.join([
             '(sampler): {}'.format(repr(self.sampler)),
