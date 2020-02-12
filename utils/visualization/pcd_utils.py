@@ -12,13 +12,21 @@ import open3d as o3d
 from src.data.pointcloud import PointCloud, ClassifiedPointCloud
 from utils.custom_datasets.file_pointcloud import FilePointCloud
 
-def vis_non_blocking(pcd: o3d.geometry.PointCloud, **kwargs):
+processes = []
+
+def clear_vis():
+    for p in processes:
+        p.terminate()
+
+def vis_non_blocking(pcd: o3d.geometry.PointCloud, geometries = [], **kwargs):
 
     pcd.estimate_normals()
     frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10)
 
-    p = Process(target=o3d.visualization.draw_geometries, args=([pcd, frame],), kwargs=kwargs, daemon=True)
+    p = Process(target=o3d.visualization.draw_geometries, args=([pcd, frame, *geometries],), kwargs=kwargs, daemon=True)
     p.start()
+
+    processes.append(p)
 
 
 def pointcloud_to_o3d_pcd(cloud: PointCloud):
@@ -81,7 +89,7 @@ def pointcloud_to_z_grey_o3d_pcd(cloud: PointCloud) -> o3d.geometry.PointCloud:
 
     posZScale = (cloud.maxPoint[2].item() - cloud.pos[:, 2]) / (cloud.maxPoint[2].item() - cloud.minPoint[2].item())
 
-    posZScale = (0.6 * posZScale) + 0.2
+    posZScale = (0.4 * posZScale) + 0.3
 
 
     colours = np.concatenate(

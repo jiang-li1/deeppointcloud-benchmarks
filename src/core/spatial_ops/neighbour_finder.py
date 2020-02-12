@@ -166,12 +166,15 @@ class DenseRadiusNeighbourFinder(MultiscaleRadiusNeighbourFinder):
         return self.find_neighbours(x, y, scale_idx)
 
 
-class DenseKNNNeighbourFinder(BaseNeighbourFinder):
+class DenseKNNNeighbourFinder(KNNNeighbourFinder):
     def __init__(self, k):
-        raise NotImplementedError
+        super().__init__(k)
 
-    def find_neighbours(self, x, y, batch_x, batch_y):
-        raise NotImplementedError
+    def find_neighbours(self, x, y):
+        if x.shape[0] > 1:
+            raise NotImplementedError
 
-    def __call__(self, x, y, batch_x=None, batch_y=None):
-        self.find_neighbours(x, y, batch_x, batch_y)
+        idx = knn(x[0], y[0])
+
+    def __call__(self, x, y):
+        self.find_neighbours(x, y)

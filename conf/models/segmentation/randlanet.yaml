@@ -139,17 +139,17 @@ models:
         define_constants:
             L1_OUT: 16
             L2_OUT: 32
-            L3_OUT: 128
-            L4_OUT: 256
-            L2_SAMP: 1/16
-            L3_SAMP: 1/4
-            L4_SAMP: 1/4
-            L1_K: 16
-            L2_K: 32
-            L3_K: 32
-            L4_K: 64
+            L3_OUT: 64
+            L4_OUT: 128
+            L2_SAMP: 1/8
+            L3_SAMP: 1/8
+            L4_SAMP: 1/8
+            L1_K: 8
+            L2_K: 8
+            L3_K: 16
+            L4_K: 32
             CLS_MLP: 64
-        # L1: (N, FEAT) -(16)> (N, 16) - get course features which encode some geometric information about every point
+        # L1: (N, FEAT) -(8)> (N, 16) - get course features which encode some geometric information about every point
         # L2: (N, 16) -(32)> (N/16, 32) - build more detailed features for 1/16 points
         # L3: (N/16, 32) -(32)> (N/64, 128) - 
         # L4: (N/256, 128) -(64)> (N/512, 256) - try to get global information by looking accross many distance points
@@ -176,7 +176,7 @@ models:
         
           - module_name: RandlaBlock
             sampler:
-                module_name: RandomSampler
+                module_name: MaskRandomSampler
                 ratio: L2_SAMP
                 min_num_to_sample: 128
 
@@ -199,7 +199,7 @@ models:
 
           - module_name: RandlaBlock
             sampler:
-                module_name: RandomSampler
+                module_name: MaskRandomSampler
                 ratio: L3_SAMP
                 min_num_to_sample: 32
 
@@ -222,9 +222,9 @@ models:
 
           - module_name: RandlaBlock
             sampler:
-                module_name: RandomSampler
+                module_name: MaskRandomSampler
                 ratio: L4_SAMP
-                min_num_to_sample: 8
+                min_num_to_sample: 16
 
             in_reshape_nn: [L3_OUT, L4_OUT // 4]
 

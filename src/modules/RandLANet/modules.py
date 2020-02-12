@@ -5,6 +5,8 @@ from torch_geometric.nn import MessagePassing
 from src.core.spatial_ops import *
 from src.core.base_conv.message_passing import *
 
+from src.utils.model_examination import LayerInfo
+
 
 class RandlaKernel(MessagePassing):
     """
@@ -125,7 +127,7 @@ class RandLANetRes(torch.nn.Module):
 class RandlaBlock(BaseModule):
 
     def __init__(self, *, 
-        sampler: BaseSampler = None,
+        sampler: MaskBaseSampler = None,
         in_reshape_nn,
         neighbour_finder: BaseNeighbourFinder,
         rel_point_pos_nn_1,
@@ -159,6 +161,9 @@ class RandlaBlock(BaseModule):
 
         self.skip_nn = make_mlp(skip_nn)
 
+        self.EXAMINE_MODE = True
+        self.layer_info = None
+
     def forward(self, data):
         batch_obj = Batch()
         x, pos, batch = data.x, data.pos, data.batch
@@ -181,6 +186,16 @@ class RandlaBlock(BaseModule):
 
         shortcut = self.skip_nn(shortcut) # (N, L_OUT)
         x = shortcut + x
+
+        if self.EXAMINE_MODE:
+            # self.EXAMINE_DICT['pos'] = pos
+            # self.EXAMINE_DICT['edge_index'] = edge_index
+            # self.EXAMINE_DICT['samp_idx'] = idx if 'idx' in locals() else None
+            self.layer_info = LayerInfo(
+                pos,
+                idx if 'idx' in locals() else None,
+                edge_index,
+            )
 
         batch_obj.x = x
         batch_obj.pos = pos
