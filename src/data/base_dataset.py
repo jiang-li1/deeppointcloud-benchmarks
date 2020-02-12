@@ -30,11 +30,11 @@ def batch_from_data_list_with_name(datalist):
 class BaseDataset:
     def __init__(self, dataset_opt, training_opt):
         self.dataset_opt = dataset_opt
-        
+
         # Default dataset path
-        class_name = self.__class__.__name__.lower().replace('dataset', '')
+        class_name = self.__class__.__name__.lower().replace("dataset", "")
         self._data_path = os.path.join(dataset_opt.dataroot, class_name)
-        
+
         self.training_opt = training_opt
         self.strategies = {}
         self._torch_loader = training_opt.use_torch_loader
@@ -48,14 +48,27 @@ class BaseDataset:
             training_opt.conv_type, training_opt.precompute_multi_scale
         )
 
+        self.train_sampler = None
+        self.test_sampler = None
+        self.val_sampler = None
+
+        self.pre_transform = None
+        self.test_transform = None
+        self.train_transform = None
+        self.val_transform = None
+
         for key_name in dataset_opt.keys():
             if "transform" in key_name:
                 new_name = key_name.replace("transforms", "transform")
                 try:
                     transform = instantiate_transforms(getattr(dataset_opt, key_name))
-                    log.info("Set attr:{} {} {}for dataset with following transform {}".format(COLORS.IPurple, new_name, COLORS.END_NO_TOKEN, transform))
-                except Exception as e:
-                    log.warn("Error trying to create {} {}".format(new_name, e))
+                    log.info(
+                        "Set attr:{} {} {}for dataset with following transform {}".format(
+                            COLORS.IPurple, new_name, COLORS.END_NO_TOKEN, transform
+                        )
+                    )
+                except Exception:
+                    log.exception("Error trying to create {}".format(new_name))
                     continue
                 setattr(self, new_name, transform)
 
@@ -79,15 +92,25 @@ class BaseDataset:
     def _create_dataloaders(self, train_dataset, test_dataset, val_dataset=None, train_sampler=None, test_sampler=None, num_test_workers=None):
         """ Creates the data loaders. Must be called in order to complete the setup of the Dataset
         """
+
+        if train_sampler is not None:
+            self.train_sampler = train_sampler
+        if test_sampler is not None:
+            self.test_sampler = test_sampler
+
         self._num_classes = train_dataset.num_classes
         self._feature_dimension = train_dataset.num_features
         dataloader = partial(torch.utils.data.DataLoader, collate_fn=self._batch_collate_function,)
+        
+        if self.train_sampler:
+            print(self.train_sampler)
+        
         self._train_loader = dataloader(
             train_dataset,
             batch_size=self.training_opt.batch_size,
-            shuffle=self.training_opt.shuffle,
+            shuffle=self.training_opt.shuffle and not self.train_sampler,
             num_workers=self.training_opt.num_workers,
-            sampler=train_sampler,
+            sampler=self.train_sampler,
         )
 
         self._test_loader = dataloader(
@@ -95,7 +118,7 @@ class BaseDataset:
             batch_size=self.training_opt.batch_size,
             shuffle=False,
             num_workers=num_test_workers if num_test_workers else self.training_opt.num_workers,
-            sampler=test_sampler,
+            sampler=self.test_sampler,
         )
 
         if val_dataset:
@@ -104,6 +127,7 @@ class BaseDataset:
                 batch_size=self.training_opt.batch_size,
                 shuffle=False,
                 num_workers=self.training_opt.num_workers,
+                sampler=self.val_sampler,
             )
 
     @property
@@ -198,7 +222,8 @@ class BaseDataset:
                         )
 
     def set_strategies(self, model):
-        strategies = model.get_sampling_and_search_strategies()
+        strategies = model.get_spatial_ops()
+
         transform = MultiScaleTransform(strategies)
         self._set_multiscale_transform(transform)
 

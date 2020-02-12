@@ -55,6 +55,7 @@ class Segmentation_MP(UnetBasedModel):
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = self.lin3(x)
         self.output = F.log_softmax(x, dim=-1)
+        self.loss_seg = F.nll_loss(self.output, self.labels) + self.get_internal_loss()
         return self.output
 
     def backward(self):
