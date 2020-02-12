@@ -14,7 +14,7 @@ training:
             lr: 0.001
     learning_rate:
         scheduler_type: "step_decay"
-        base_lr: ${optimizer.params.lr}
+        base_lr: 0.001
         lr_decay: 0.5
         decay_step: 200000
         lr_clip: 1e-5

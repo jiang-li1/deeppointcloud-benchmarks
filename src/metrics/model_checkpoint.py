@@ -25,13 +25,14 @@ def get_model_checkpoint(
     resume: bool = True,
     weight_name: str = None,
     selection_stage: str = "test",
+    opt_config = None, 
 ):
     """ Loads a model from a checkpoint or creates a new one.
     """
     model_checkpoint: ModelCheckpoint = ModelCheckpoint(load_dir, check_name, resume, selection_stage)
 
     if resume:
-        model_checkpoint.initialize_model(model, weight_name)
+        model_checkpoint.initialize_model(model, weight_name, opt_config=opt_config)
     return model_checkpoint
 
 
@@ -145,13 +146,13 @@ class ModelCheckpoint(object):
     def get_starting_epoch(self):
         return len(self._checkpoint.stats["train"]) + 1
 
-    def initialize_model(self, model: BaseModel, weight_name: str = None):
+    def initialize_model(self, model: BaseModel, weight_name: str = None, opt_config=None):
         if not self._checkpoint.is_empty:
             state_dict = self._checkpoint.get_state_dict(weight_name)
             model.load_state_dict(state_dict)
             optimizer = self._checkpoint.get_optimizer()
             lr_params = self._checkpoint.get_lr_params()
-            model.set_optimizer(optimizer.__class__, lr_params=lr_params)
+            model.set_optimizer(optimizer.__class__, opt_config, lr_params=lr_params)
 
     def find_func_from_metric_name(self, metric_name, default_metrics_func):
         for token_name, func in default_metrics_func.items():

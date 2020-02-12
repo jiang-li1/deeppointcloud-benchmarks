@@ -196,6 +196,7 @@ def main(cfg):
         cfg_training.resume,
         cfg_training.weight_name,
         "val" if dataset.has_val_loader else "test",
+        cfg_training.optimizer.params,
     )
 
     # Run training / evaluation
