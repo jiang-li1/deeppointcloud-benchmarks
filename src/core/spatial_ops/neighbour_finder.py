@@ -121,12 +121,6 @@ class MultiscaleRadiusNeighbourFinder(BaseMSNeighbourFinder):
     def find_neighbours(self, x, y, batch_x=None, batch_y=None, scale_idx=0):
         if scale_idx >= self.num_scales:
             raise ValueError("Scale %i is out of bounds %i" % (scale_idx, self.num_scales))
-        # print(x.shape, y.shape, batch_x.shape, batch_y.shape, sep='\n')
-        # print(x, y, batch_x, batch_y, sep='\n')
-        # print('x batch_x], y batch_y]', x[batch_x], y[batch_y], sep='\n')
-        # print(batch_x.min(), batch_x.max(), batch_y.min(), batch_y.max())
-        # print(batch_x.sum(), batch_y.sum())
-        # print(self._radius[scale_idx])
         return radius(
             x, y, self._radius[scale_idx], batch_x, batch_y, max_num_neighbors=self._max_num_neighbors[scale_idx]
         )
@@ -172,12 +166,15 @@ class DenseRadiusNeighbourFinder(MultiscaleRadiusNeighbourFinder):
         return self.find_neighbours(x, y, scale_idx)
 
 
-class DenseKNNNeighbourFinder(BaseNeighbourFinder):
+class DenseKNNNeighbourFinder(KNNNeighbourFinder):
     def __init__(self, k):
-        raise NotImplementedError
+        super().__init__(k)
 
-    def find_neighbours(self, x, y, batch_x, batch_y):
-        raise NotImplementedError
+    def find_neighbours(self, x, y):
+        if x.shape[0] > 1:
+            raise NotImplementedError
 
-    def __call__(self, x, y, batch_x=None, batch_y=None):
-        self.find_neighbours(x, y, batch_x, batch_y)
+        idx = knn(x[0], y[0])
+
+    def __call__(self, x, y):
+        self.find_neighbours(x, y)

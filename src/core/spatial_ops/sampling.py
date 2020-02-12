@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import math
 import torch
-from torch_geometric.nn import fps, voxel_grid
+from torch_geometric.nn import voxel_grid
 from torch_geometric.nn.pool.consecutive import consecutive_cluster
 from torch_geometric.nn.pool.pool import pool_pos, pool_batch
 import torch_points as tp
@@ -62,6 +62,13 @@ class BaseSampler(ABC):
         return '{}({})'.format(self.__class__.__name__, inner)
 
 
+class MaskBaseSampler(BaseSampler):
+    '''
+        Base class for samplers which return a mask index, as opposed
+        to a range index 
+    '''
+    pass
+
 class FPSSampler(BaseSampler):
     """If num_to_sample is provided, sample exactly
         num_to_sample points. Otherwise sample floor(pos[0] * ratio) points
@@ -69,6 +76,7 @@ class FPSSampler(BaseSampler):
 
     def sample(self, pos, batch, **kwargs):
         from torch_geometric.nn import fps
+
         if len(pos.shape) != 2:
             raise ValueError(" This class is for sparse data and expects the pos tensor to be of dimension 2")
         return fps(pos, batch, ratio=self._get_ratio_to_sample(pos.shape[0]))
@@ -120,6 +128,21 @@ class RandomSampler(BaseSampler):
         if len(pos.shape) != 2:
             raise ValueError(" This class is for sparse data and expects the pos tensor to be of dimension 2")
         idx = torch.randint(0, pos.shape[0], (self._get_num_to_sample(pos.shape[0]),))
+        return idx
+
+class MaskRandomSampler(MaskBaseSampler):
+
+    def sample(self, pos, batch, **kwargs):
+        if len(pos.shape) != 2:
+            raise ValueError(" This class is for sparse data and expects the pos tensor to be of dimension 2")
+
+        if hasattr(self, 'min_num_to_sample'):
+            mask = torch.zeros((pos.shape[0],)).to(torch.bool)
+            idx = torch.randint(0, pos.shape[0], (self._get_num_to_sample(pos.shape[0]),))
+            mask[idx] = True
+            return mask
+
+        idx = torch.rand((pos.shape[0],)) < self._get_ratio_to_sample(None)
         return idx
 
 
