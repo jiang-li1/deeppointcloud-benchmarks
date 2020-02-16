@@ -48,9 +48,11 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
 
             try:
                 model.optimize_parameters(dataset.batch_size)
-            except Exception as e:
+            except Exception:
                 traceback.print_exc()
-                import pdb; pdb.set_trace()
+                import pdb
+
+                pdb.set_trace()
 
             if i % 10 == 0 or True:
                 tracker.track(model)
@@ -105,10 +107,7 @@ def test_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoi
                 model.forward()
 
             tracker.track(model)
-            tq_test_loader.set_postfix(
-                **tracker.get_instantaneous_metrics(), 
-                color=COLORS.TEST_COLOR
-            )
+            tq_test_loader.set_postfix(**tracker.get_instantaneous_metrics(), color=COLORS.TEST_COLOR)
 
     metrics = tracker.publish()
     tracker.print_summary()
@@ -139,7 +138,7 @@ def main(cfg):
     log.info("DEVICE : {}".format(device))
 
     # Get task and model_name
-    tested_task = cfg.data.get('task', cfg.task)
+    tested_task = cfg.data.get("task", cfg.task)
     tested_model_name = cfg.model_name
 
     # Find and create associated model
@@ -189,10 +188,12 @@ def main(cfg):
 
     tracker: BaseTracker = dataset.get_tracker(model, tested_task, dataset, cfg.wandb, cfg.tensorboard)
 
+    check_name = cfg.experiment_name if "experiment_name" in cfg else tested_model_name
+
     checkpoint = get_model_checkpoint(
         model,
         cfg_training.checkpoint_dir,
-        tested_model_name,
+        check_name,
         cfg_training.resume,
         cfg_training.weight_name,
         "val" if dataset.has_val_loader else "test",

@@ -42,7 +42,7 @@ class BaseModel(torch.nn.Module):
         self._spatial_ops_dict: Dict = {}
         self._iterations = 0
         self._lr_params = None
-        self._grad_clip = opt.get("grad_clip", 0) 
+        self._grad_clip = opt.get("grad_clip", 0)
         self._superbatch_size = superbatch_size
         self._superbatch_tups = []
 
@@ -99,9 +99,9 @@ class BaseModel(torch.nn.Module):
             self.output = self.output[self.input.inner_idx]
             self.labels = self.labels[self.input.inner_idx]
 
-        if self._superbatch_size > 1 and len(self._superbatch_tups) <= self._superbatch_size:
-            self._superbatch_tups.append((self.labels, self.output, self.get_internal_loss()))
-        else:
+        self._superbatch_tups.append((self.labels, self.output, self.get_internal_loss()))
+
+        if self._superbatch_size == 1 or len(self._superbatch_tups) >= self._superbatch_size:
             self._optimizer.zero_grad()  # clear existing gradients
             self.backward()  # calculate gradients
             if self._grad_clip > 0:
