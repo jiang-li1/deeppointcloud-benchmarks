@@ -323,7 +323,7 @@ class AHNAerialDataset(BaseDataset):
             worker_unique=True,
             epoch_unique=True
         )
-        train_patch_sampler = LazyUniqueRandomSampler(40)
+        train_patch_sampler = LazyUniqueRandomSampler(20)
 
         train_patch_dataset = LazyPartialPatchDataset(
             train_tiles_dataset,
@@ -343,7 +343,7 @@ class AHNAerialDataset(BaseDataset):
             worker_unique=True,
             epoch_unique=True
         )
-        test_patch_sampler = LazyUniqueRandomSampler(40)
+        test_patch_sampler = LazyUniqueRandomSampler(20)
         test_patch_dataset = LazyPartialPatchDataset(
             test_tiles_dataset,
             test_cloud_sampler,
