@@ -99,7 +99,7 @@ class BaseModel(torch.nn.Module):
             self.output = self.output[self.input.inner_idx]
             self.labels = self.labels[self.input.inner_idx]
 
-        if self._superbatch_size > 1 and len(self._superbatch_tups) < self._superbatch_size:
+        if self._superbatch_size > 1 and len(self._superbatch_tups) <= self._superbatch_size:
             self._superbatch_tups.append((self.labels, self.output, self.get_internal_loss()))
         else:
             self._optimizer.zero_grad()  # clear existing gradients
