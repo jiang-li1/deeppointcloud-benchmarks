@@ -21,7 +21,7 @@ class BaseModel(torch.nn.Module):
         -- <optimize_parameters>:           calculate losses, gradients, and update network weights.
     """
 
-    def __init__(self, opt):
+    def __init__(self, opt, superbatch_size=1):
         """Initialize the BaseModel class.
         Parameters:
             opt (Option class)-- stores all the experiment flags; needs to be a subclass of BaseOptions
@@ -43,6 +43,8 @@ class BaseModel(torch.nn.Module):
         self._iterations = 0
         self._lr_params = None
         self._grad_clip = opt.get("grad_clip", 0) 
+        self._superbatch_size = superbatch_size
+        self._superbatch_tups = []
 
     @property
     def lr_params(self):
@@ -96,13 +98,20 @@ class BaseModel(torch.nn.Module):
         if hasattr(self.input, "inner_idx"):
             self.output = self.output[self.input.inner_idx]
             self.labels = self.labels[self.input.inner_idx]
-        self._optimizer.zero_grad()  # clear existing gradients
-        self.backward()  # calculate gradients
-        if self._grad_clip > 0:
-            torch.nn.utils.clip_grad_norm_(self.parameters(), self._grad_clip)
-        self._optimizer.step()  # update parameters
-        if self._lr_scheduler is not None:
-            self._lr_scheduler.step(self._iterations)
+
+        if self._superbatch_size > 1 and len(self._superbatch_tups) < self._superbatch_size:
+            self._superbatch_tups.append((self.labels, self.output, self.get_internal_loss()))
+        else:
+            self._optimizer.zero_grad()  # clear existing gradients
+            self.backward()  # calculate gradients
+            if self._grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(self.parameters(), self._grad_clip)
+            self._optimizer.step()  # update parameters
+            if self._lr_scheduler is not None:
+                self._lr_scheduler.step(self._iterations)
+
+            if self._superbatch_size > 1:
+                self._superbatch_tups.clear()
 
     def get_current_losses(self):
         """Return traning losses / errors. train.py will print out these errors on console"""

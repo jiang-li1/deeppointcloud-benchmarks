@@ -78,7 +78,7 @@ class UnetBasedModel(BaseModel):
         if upsample_op:
             self._spatial_ops_dict["upsample_op"].append(upsample_op)
 
-    def __init__(self, opt, model_type, dataset: BaseDataset, modules_lib):
+    def __init__(self, opt, model_type, dataset: BaseDataset, modules_lib, **kwargs):
         """Construct a Unet generator
         Parameters:
             opt - options for the network generation
@@ -93,7 +93,7 @@ class UnetBasedModel(BaseModel):
         * up_conv
         * OPTIONAL: innermost
         """
-        super(UnetBasedModel, self).__init__(opt)
+        super(UnetBasedModel, self).__init__(opt, **kwargs)
         self._spatial_ops_dict = {"neighbour_finder": [], "sampler": [], "upsample_op": []}
         # detect which options format has been used to define the model
         if type(opt.down_conv) is ListConfig or "down_conv_nn" not in opt.down_conv:
