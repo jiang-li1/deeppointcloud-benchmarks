@@ -361,7 +361,7 @@ class AHNAerialDataset(BaseDataset):
             self.train_dataset,
             self.test_dataset,
             val_dataset=None,
-            num_test_workers=training_opt.num_workers//2
+            num_test_workers=1
         )
 
 

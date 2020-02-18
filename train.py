@@ -50,9 +50,12 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
                 model.optimize_parameters(dataset.batch_size)
             except Exception:
                 traceback.print_exc()
-                import pdb
+                model._optimizer.zero_grad()
+                torch.cuda.empty_cache()
+                continue
+                #import pdb
 
-                pdb.set_trace()
+                #pdb.set_trace()
 
             if i % 10 == 0 or True:
                 tracker.track(model)
