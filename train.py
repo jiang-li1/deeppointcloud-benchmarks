@@ -51,6 +51,7 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
             except Exception:
                 traceback.print_exc()
                 model._optimizer.zero_grad()
+                model._superbatch_tups.clear()
                 del data
                 torch.cuda.empty_cache()
                 continue
