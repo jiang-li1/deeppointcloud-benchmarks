@@ -72,11 +72,13 @@ class FocalLoss(torch.nn.modules.loss._Loss):
         self.size_average = size_average
         self.normalized = normalized
 
-    def forward(self, input, target):
-        logpt = F.log_softmax(input, dim=-1)
-        logpt = torch.gather(logpt, -1, target.unsqueeze(-1))
+    def forward(self, p, target):
+        pt = torch.gather(p, -1, target.unsqueeze(-1))
+        logpt = torch.log(pt)
+        # logpt = torch.gather(logp, -1, target.unsqueeze(-1))
         logpt = logpt.view(-1)
-        pt = Variable(logpt.data.exp())
+        pt = pt.view(-1)
+        # pt = Variable(logpt.data.exp())
 
         if self._alphas is not None:
             at = self._alphas.gather(0, target)

@@ -51,19 +51,23 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
             except Exception:
                 traceback.print_exc()
                 model._optimizer.zero_grad()
+                del data
                 torch.cuda.empty_cache()
                 continue
                 #import pdb
 
                 #pdb.set_trace()
 
-            if i % 10 == 0 or True:
-                tracker.track(model)
+            tracker.track(model)
 
             # import pdb; pdb.set_trace()
 
+            metrics = tracker.get_instantaneous_metrics()
+            if i % 10 == 0:
+                metrics = {**metrics, **tracker.get_metrics()}
+
             tq_train_loader.set_postfix(
-                **(tracker.get_metrics() if i % 10 == 0 else tracker.get_instantaneous_metrics()),
+                **metrics,
                 data_loading=float(t_data),
                 iteration=float(time.time() - iter_start_time),
                 color=COLORS.TRAIN_COLOR

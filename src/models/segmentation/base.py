@@ -54,7 +54,8 @@ class Segmentation_MP(UnetBasedModel):
         x = self.lin2(x)
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = self.lin3(x)
-        self.output = F.log_softmax(x, dim=-1)
+        self.output = F.softmax(x, dim=-1)
+        # self.output = F.log_softmax(x, dim=-1)
         # self.loss_seg = F.nll_loss(self.output, self.labels) + self.get_internal_loss()
         self.loss_seg = -1
         return self.output
@@ -77,6 +78,7 @@ class Segmentation_MP(UnetBasedModel):
             internal_loss = self.internal_loss
 
         if self.loss_module is not None:
+            print("Calculating loss: ", self.loss_module.__class__.__name__)
             self.loss_seg = self.loss_module(output, labels) + internal_loss
         else:
             self.loss_seg = F.nll_loss(output, labels) + internal_loss
