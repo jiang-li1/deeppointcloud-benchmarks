@@ -32,7 +32,7 @@ class PointNet2_D(UnetBasedModel):
 
     def __init__(self, option, model_type, dataset, modules):
         # call the initialization method of UnetBasedModel
-        UnetBasedModel.__init__(self, option, model_type, dataset, modules)
+        UnetBasedModel.__init__(self, option, model_type, dataset, modules, superbatch_size=10)
         self._num_classes = dataset.num_classes
         self._weight_classes = dataset.weight_classes
         self._use_category = option.use_category
@@ -58,7 +58,7 @@ class PointNet2_D(UnetBasedModel):
         self.FC_layer.conv1d(self._num_classes, activation=None)
         self.loss_names = ["loss_seg"]
 
-        self.lossModule = FocalLoss()
+        self.lossModule = FocalLoss(gamma=5)
 
     def set_input(self, data):
         """Unpack input data from the dataloader and perform necessary pre-processing steps.
@@ -90,10 +90,12 @@ class PointNet2_D(UnetBasedModel):
             last_feature = torch.cat((last_feature, cat_one_hot), dim=1)
 
         self.output = self.FC_layer(last_feature).transpose(1, 2).contiguous().view((-1, self._num_classes))
+
+        self.output = F.softmax(self.output, dim=-1)
         
         if self._weight_classes is not None:
             self._weight_classes = self._weight_classes.to(self.output.device)
-        self.loss_seg = F.cross_entropy(self.output, self.labels, weight=self._weight_classes)
+        # self.loss_seg = F.cross_entropy(self.output, self.labels, weight=self._weight_classes)
         return self.output
 
     def backward(self):

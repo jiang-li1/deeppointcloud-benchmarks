@@ -1,0 +1,1 @@
+python train.py model_name=Randlanet_ahn model_type=randlanet experiment_name=randla_ahn_super_batch data.patch_opt.patch_diam=20

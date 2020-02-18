@@ -133,7 +133,7 @@ class UnetBasedModel(BaseModel):
         if num_convs > 1:
             for index in range(num_convs - 1, 0, -1):
                 args_up, args_down = self._fetch_arguments_up_and_down(opt, index)
-                unet_block = UnetSkipConnectionBlock(args_up=args_up, args_down=args_down, submodule=unet_block)
+                unet_block = UnetSkipConnectionBlock(args_up=args_up, args_down=args_down, submodule=unet_block, modules_lib=modules_lib)
                 self._save_sampling_and_search(unet_block)
         else:
             index = num_convs
@@ -143,7 +143,8 @@ class UnetBasedModel(BaseModel):
         args_down["nb_feature"] = dataset.feature_dimension
         args_up["nb_feature"] = dataset.feature_dimension
         self.model = UnetSkipConnectionBlock(
-            args_up=args_up, args_down=args_down, submodule=unet_block, outermost=True
+            args_up=args_up, args_down=args_down, submodule=unet_block, outermost=True, 
+            modules_lib=modules_lib
         )  # add the outermost layer
         self._save_sampling_and_search(self.model)
 
@@ -310,6 +311,9 @@ class UnetSkipConnectionBlock(nn.Module):
             self.submodule = submodule
             self.up = upconv
 
+        self._type = 'flat' if 'randlanet' in str(modules_lib) else 'sloped'
+
+
     def forward(self, data, **kwargs):
         # import pdb; pdb.set_trace()
         if self.innermost:
@@ -319,7 +323,10 @@ class UnetSkipConnectionBlock(nn.Module):
         else:
             data_out = self.down(data, **kwargs)
             data_out2 = self.submodule(data_out, **kwargs)
-            data = (data_out2, data_out)
+            if self._type == 'sloped':
+                data = (data_out2, data)
+            elif self._type == 'flat':
+                data = (data_out2, data_out)
             return self.up(data, **kwargs)
 
 

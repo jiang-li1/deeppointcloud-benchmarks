@@ -1,14 +1,7 @@
-model_name: Randlanet_ahn # Name of the specific model to load
-model_type: randlanet
-dataset: ahn_aerial
-task: segmentation
-experiment_name: randlanet #experiment name, used for saving outputs
-training: ahn
-
 defaults:
   - task: segmentation # Task performed (segmentation, classification etc...)
     optional: True
-  - model_type: randlanet # Type of model to use, e.g. pointnet2, rsconv etc...
+  - model_type: pointnet2 # Type of model to use, e.g. pointnet2, rsconv etc...
     optional: True
   - dataset: ahn_aerial
     optional: True
@@ -22,6 +15,15 @@ defaults:
   - hydra/job_logging: custom
 
 pretty_print: True
+
+model_name: pointnet2_ahn # Name of the specific model to load
+model_type: pointnet2
+dataset: ahn_aerial
+task: segmentation
+experiment_name: pointnet_ahn #experiment name, used for saving outputs
+training: ahn
+
+models: ${task}/${model_type}
 
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
 # parameters for Weights and Biases

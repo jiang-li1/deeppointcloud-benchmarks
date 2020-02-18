@@ -92,6 +92,9 @@ class FocalLoss(torch.nn.modules.loss._Loss):
         loss = -1 * sum_ * (1 - pt) ** self._gamma * logpt
         return loss.sum()
 
+    def extra_repr(self):
+        return 'gamma = {}'.format(self._gamma)
+
 
 class WrapperKLDivLoss(torch.nn.modules.loss._Loss):
     def __init__(self, size_average=None, reduce=None, reduction="mean"):

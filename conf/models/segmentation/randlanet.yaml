@@ -268,7 +268,7 @@ models:
             dropout: 0.5
         loss_module:
             module_name: FocalLoss
-            gamma: 2
+            gamma: 5
 
 
     Randlanet_ahn_dense:

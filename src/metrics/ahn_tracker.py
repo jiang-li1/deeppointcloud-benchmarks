@@ -30,7 +30,10 @@ class AHNTracker(BaseTracker):
         """
         super().track(model)
 
-        self._i_loss = model.get_current_losses()['loss_seg']
+        try:
+            self._i_loss = model.get_current_losses()['loss_seg']
+        except KeyError:
+            self._i_loss = -1 
 
         outputs = self._convert(model.get_output())
         targets = self._convert(model.get_labels())
