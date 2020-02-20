@@ -26,7 +26,7 @@ from src.utils.config import set_format
 log = logging.getLogger(__name__)
 
 
-def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTracker, checkpoint: ModelCheckpoint):
+def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTracker, checkpoint: ModelCheckpoint, on_error="raise"):
     model.train()
     tracker.reset("train")
     train_loader = dataset.train_dataloader()
@@ -48,20 +48,24 @@ def train_epoch(epoch, model: BaseModel, dataset, device: str, tracker: BaseTrac
 
             try:
                 model.optimize_parameters(dataset.batch_size)
-            except Exception:
-                traceback.print_exc()
-                model._optimizer.zero_grad()
-                model._superbatch_tups.clear()
-                del data
-                torch.cuda.empty_cache()
-                continue
-                #import pdb
-
-                #pdb.set_trace()
+            except Exception as e:
+                if on_error == 'debug':
+                    traceback.print_exc()
+                    import pdb; pdb.set_trace()
+                elif on_error == 'recover':
+                    traceback.print_exc()
+                    model._optimizer.zero_grad()
+                    model._superbatch_tups.clear()
+                    del data
+                    torch.cuda.empty_cache()
+                    continue
+                elif on_error == 'raise':
+                    raise e
+                else:
+                    print('on_error action {} not supported'.format(on_error))
+                    raise e
 
             tracker.track(model)
-
-            # import pdb; pdb.set_trace()
 
             metrics = tracker.get_instantaneous_metrics()
             if i % 10 == 0:
@@ -125,7 +129,7 @@ def test_epoch(model: BaseModel, dataset, device, tracker: BaseTracker, checkpoi
 def run(cfg, model, dataset: BaseDataset, device, tracker: BaseTracker, checkpoint: ModelCheckpoint):
     for epoch in range(checkpoint.start_epoch, cfg.training.epochs):
         log.info("EPOCH %i / %i", epoch, cfg.training.epochs)
-        train_epoch(epoch, model, dataset, device, tracker, checkpoint)
+        train_epoch(epoch, model, dataset, device, tracker, checkpoint, cfg.on_error)
         if dataset.has_val_loader:
             eval_epoch(model, dataset, device, tracker, checkpoint)
 

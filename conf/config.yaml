@@ -22,7 +22,7 @@ dataset: ahn_aerial
 task: segmentation
 experiment_name: pointnet_ahn #experiment name, used for saving outputs
 training: ahn
-
+on_error: debug # one of {debug, recover, raise}
 models: ${task}/${model_type}
 
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking

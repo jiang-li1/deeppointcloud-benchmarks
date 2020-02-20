@@ -2,10 +2,10 @@ import torch
 import torch.nn.functional as F
 import torch_points as tp
 import etw_pytorch_utils as pt_utils
-
+from torch_geometric.data import Data
 from src.core.base_conv.dense import BaseDenseConvolutionFlat
-from src.core.neighbourfinder import DenseRadiusNeighbourFinder, DenseKNNNeighbourFinder, BaseNeighbourFinder
-from src.core.sampling import BaseSampler
+from src.core.spatial_ops.neighbour_finder import DenseRadiusNeighbourFinder, BaseNeighbourFinder
+from src.core.spatial_ops.sampling import BaseSampler
 from src.core.base_conv.message_passing import BaseModule
 
 class RandlaKernelDense(BaseModule):
@@ -32,7 +32,7 @@ class RandlaKernelDense(BaseModule):
     def forward(self, x, pos, neigh_idx):
         """
         Arguments:
-            x -- Previous features [B, N, C]
+            x -- Previous features [B, C, N]
             pos -- positions [B, N, 3]
             neigh_idx -- Indexes to group [B, N, k]
         Returns:
@@ -56,13 +56,20 @@ class RandlaKernelDense(BaseModule):
 
         new_features = self.global_nn(new_features)
 
+        new_features = new_features.squeeze(-1) # [B, C, N]
+
         return new_features
 
 
     def _prepare_features(self, x, pos, neigh_idx):
+        '''
+        Arguments:
+            x -- [B, C, N]
+            neigh_idx -- [B, N, k]
+        '''
         pos_trans = pos.transpose(1, 2).contiguous()  # [B, 3, N]
         grouped_pos = tp.grouping_operation(pos_trans, neigh_idx)  # [B, 3, N, k]
-        centroids = pos_trans.unsqueeze(-1)
+        centroids = pos_trans.unsqueeze(-1).expand(*[-1]*3, grouped_pos.shape[-1])
         grouped_pos_relative = grouped_pos - centroids  # [B, 3, N, k]
 
         dists = torch.norm(grouped_pos_relative, p=2, dim=1).unsqueeze(1)
@@ -175,7 +182,13 @@ class RandlaBlockDense(BaseModule):
         make_mlp = pt_utils.SharedMLP
 
         self.sampler = sampler
-        self.in_reshape_nn = make_mlp(in_reshape_nn)
+        self.in_reshape_nn = torch.nn.Sequential(
+            *[
+                torch.nn.Conv1d(in_reshape_nn[0], in_reshape_nn[-1], kernel_size=1, stride=1, bias=True),
+                torch.nn.BatchNorm1d(in_reshape_nn[-1]),
+                torch.nn.ReLU(),
+            ]
+        )
         self.neighbour_finder = neighbour_finder
 
         self.kernel_1 = RandlaKernelDense(
@@ -190,22 +203,35 @@ class RandlaBlockDense(BaseModule):
             global_nn=aggregation_nn_2
         )
 
-        self.skip_nn = make_mlp(skip_nn)
-
+        self.skip_nn = torch.nn.Sequential(
+            *[
+                torch.nn.Conv1d(skip_nn[0], skip_nn[-1], kernel_size=1, stride=1, bias=True),
+                torch.nn.BatchNorm1d(skip_nn[-1]),
+                torch.nn.ReLU(),
+            ]
+        )
     def forward(self, data):
         x, pos = data.x, data.pos
 
+        # pos -- [B, N, 3]
+        # x -- [B, C, N]        
+
         if self.sampler is not None:
-            idx = self.sampler(data.pos, batch)
-            x = x[idx]
-            pos = pos[idx]
-            batch = batch[idx]
+            assert pos.shape[0] == 1
+            idx = self.sampler(data.pos)
+            idx = idx.unsqueeze(0) # [B, N]
+
+            x = tp.gather_operation(x, idx)
+            pos = tp.gather_operation(
+                pos.transpose(1, 2).contiguous(), # [B, 3, N]
+                idx
+            ).transpose(1, 2).contiguous() # [B, new_N, 3]
 
         shortcut = x
 
         x = self.in_reshape_nn(x) # (N, L_OUT//4)
 
-        radius_idx =self.neighbour_finder(pos, pos)
+        radius_idx = self.neighbour_finder(pos, pos)
         x = self.kernel_1(x, pos, radius_idx) # (N, L_OUT//2)
         x = self.kernel_2(x, pos, radius_idx) # (N, L_OUT)
 
@@ -219,3 +245,21 @@ class RandlaBlockDense(BaseModule):
             '(sampler): {}'.format(repr(self.sampler)),
             '(neighbour_finder): {}'.format(repr(self.neighbour_finder)),
         ])
+
+class RandlaBaseModuleDense(BaseModule):
+
+    def __init__(self,*,nn,**kwargs):
+        super().__init__()
+        self.nn = torch.nn.Sequential(
+            *[
+                torch.nn.Sequential(*[
+                    torch.nn.Conv1d(nn[n], nn[n+1], kernel_size=1, stride=1, bias=True),
+                    torch.nn.BatchNorm1d(nn[n+1]),
+                    torch.nn.ReLU(),
+                ]) for n in range(len(nn)-1)
+            ]
+        )
+
+    def forward(self, data):
+        data.x = self.nn(data.x)
+        return data
