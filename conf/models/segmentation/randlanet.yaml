@@ -278,30 +278,34 @@ models:
         define_constants:
             L1_OUT: 16
             L2_OUT: 32
-            L3_OUT: 128
-            L4_OUT: 256
-            L2_SAMP: 1/16
-            L3_SAMP: 1/4
-            L4_SAMP: 1/4
-            L1_K: 16
-            L2_K: 32
-            L3_K: 32
-            L4_K: 64
+            L3_OUT: 64
+            L4_OUT: 128
+            L2_SAMP: 1/8
+            L3_SAMP: 1/8
+            L4_SAMP: 1/8
+            L1_K: 8
+            L2_K: 8
+            L3_K: 16
+            L4_K: 32
             CLS_MLP: 64
-        # L1: (N, FEAT) -(16)> (N, 16) - get course features which encode some geometric information about every point
+            SAMPLER_NAME: DenseRandomSampler
+            NEIGH_NAME: DenseRadiusNeighbourFinder
+        # L1: (N, FEAT) -(8)> (N, 16) - get course features which encode some geometric information about every point
         # L2: (N, 16) -(32)> (N/16, 32) - build more detailed features for 1/16 points
         # L3: (N/16, 32) -(32)> (N/64, 128) - 
         # L4: (N/256, 128) -(64)> (N/512, 256) - try to get global information by looking accross many distance points
 
         down_conv:
-          - module_name: RandlaBlock
+          - module_name: RandlaBlockDense
 
             in_reshape_nn: [FEAT, L1_OUT // 4]
 
             #LocSE + Attentive Pooling 1: in = L1_OUT // 4, out = L1_OUT // 2
             neighbour_finder:
-                module_name: KNNNeighbourFinder
-                k: L1_K
+                module_name: NEIGH_NAME
+                # k: L1_K
+                radius: 1
+                max_num_neighbors: L1_K
             rel_point_pos_nn_1: [10, L1_OUT // 4, L1_OUT // 4]
             attention_nn_1: [L1_OUT // 2, L1_OUT, L1_OUT // 2]
             aggregation_nn_1: [L1_OUT // 2, L1_OUT // 2]
@@ -313,9 +317,9 @@ models:
 
             skip_nn: [FEAT, L1_OUT]
         
-          - module_name: RandlaBlock
+          - module_name: RandlaBlockDense
             sampler:
-                module_name: RandomSampler
+                module_name: SAMPLER_NAME
                 ratio: L2_SAMP
                 min_num_to_sample: 128
 
@@ -323,8 +327,10 @@ models:
 
             #LocSE + Attentive Pooling 1: in = L1_OUT, out = L2_OUT // 2
             neighbour_finder:
-                module_name: KNNNeighbourFinder
-                k: L2_K
+                module_name: NEIGH_NAME
+                # k: L2_K
+                radius: 4
+                max_num_neighbors: L2_K
             rel_point_pos_nn_1: [10, L2_OUT // 4, L2_OUT // 4]
             attention_nn_1: [L2_OUT // 2, L2_OUT, L2_OUT // 2]
             aggregation_nn_1: [L2_OUT // 2, L2_OUT // 2]
@@ -336,9 +342,9 @@ models:
 
             skip_nn: [L1_OUT, L2_OUT]
 
-          - module_name: RandlaBlock
+          - module_name: RandlaBlockDense
             sampler:
-                module_name: RandomSampler
+                module_name: SAMPLER_NAME
                 ratio: L3_SAMP
                 min_num_to_sample: 32
 
@@ -346,8 +352,10 @@ models:
 
             #LocSE + Attentive Pooling 1: in = L2_OUT, out = L3_OUT // 2
             neighbour_finder:
-                module_name: KNNNeighbourFinder
-                k: L3_K
+                module_name: NEIGH_NAME
+                # k: L3_K
+                radius: 16
+                max_num_neighbors: L3_K
             rel_point_pos_nn_1: [10, L3_OUT // 4, L3_OUT // 4]
             attention_nn_1: [L3_OUT // 2, L3_OUT, L3_OUT // 2]
             aggregation_nn_1: [L3_OUT // 2, L3_OUT // 2]
@@ -359,9 +367,9 @@ models:
 
             skip_nn: [L2_OUT, L3_OUT]
 
-          - module_name: RandlaBlock
+          - module_name: RandlaBlockDense
             sampler:
-                module_name: RandomSampler
+                module_name: SAMPLER_NAME
                 ratio: L4_SAMP
                 min_num_to_sample: 8
 
@@ -369,8 +377,10 @@ models:
 
             #LocSE + Attentive Pooling 1: in = L3_OUT, out = L4_OUT // 2
             neighbour_finder:
-                module_name: KNNNeighbourFinder
-                k: L4_K
+                module_name: NEIGH_NAME
+                # k: L4_K
+                radius: 64
+                max_num_neighbors: L4_K
             rel_point_pos_nn_1: [10, L4_OUT // 4, L4_OUT // 4]
             attention_nn_1: [L4_OUT // 2, L4_OUT, L4_OUT // 2]
             aggregation_nn_1: [L4_OUT // 2, L4_OUT // 2]
@@ -383,22 +393,22 @@ models:
             skip_nn: [L3_OUT, L4_OUT]
 
         flat_innermost:
-            module_name: RandlaBaseModule
+            module_name: RandlaBaseModuleDense
             nn: [L4_OUT, 2 * L4_OUT, L4_OUT]
         up_conv:
-          - module_name: FPModule
+          - module_name: DenseFPModule
             up_k: 1
             skip: True
             up_conv_nn: [2 * L4_OUT, L3_OUT, L3_OUT]
-          - module_name: FPModule
+          - module_name: DenseFPModule
             up_k: 1
             skip: True
             up_conv_nn: [2 * L3_OUT, L2_OUT, L2_OUT]
-          - module_name: FPModule
+          - module_name: DenseFPModule
             up_k: 1
             skip: True
             up_conv_nn: [2 * L2_OUT, L1_OUT, L1_OUT]
-          - module_name: FPModule
+          - module_name: DenseFPModule
             up_k: 1
             skip: True
             up_conv_nn: [2 * L1_OUT, CLS_MLP, CLS_MLP]

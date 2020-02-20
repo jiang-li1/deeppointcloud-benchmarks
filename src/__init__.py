@@ -45,6 +45,8 @@ def instantiate_model(model_class, task, option, dataset: BaseDataset) -> BaseMo
     model_module = ".".join(["src.models", task, module])
     modellib = importlib.import_module(model_module)
 
+    model=None
+
     for name, cls in modellib.__dict__.items():
         if name.lower() == class_name.lower():
             model = cls

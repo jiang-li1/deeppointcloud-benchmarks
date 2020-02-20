@@ -105,8 +105,29 @@ class PointNet2_D(UnetBasedModel):
         if self._weight_classes is not None:
             self._weight_classes = self._weight_classes.to(self.output.device)
         # self.loss_seg = F.cross_entropy(self.output, self.labels, weight=self._weight_classes)
-        self.loss_seg = self.lossModule(self.output, self.labels)
-        self.loss_seg.backward()
+
+        if self._superbatch_size > 1:
+            labels = torch.cat([t[0] for t in self._superbatch_tups])
+            output = torch.cat([t[1] for t in self._superbatch_tups])
+            internal_loss = sum(t[2] for t in self._superbatch_tups)
+            # print(labels, labels.size())
+            # print(output, output.size())
+            # print(internal_loss)
+        else:
+            labels = self.labels
+            output = self.output
+            internal_loss = self.get_internal_loss()
+
+        if self.loss_module is not None:
+            print("Calculating loss: ", self.loss_module.__class__.__name__)
+            self.loss_seg = self.loss_module(output, labels) + internal_loss
+        else:
+            self.loss_seg = F.nll_loss(output, labels) + internal_loss
+
+        print("Doing loss backwards...")
+        self.loss_seg.backward()  # calculate gradients of network G w.r.t. loss_G
+        # self.loss_seg = self.lossModule(self.output, self.labels)
+        # self.loss_seg.backward()
 
 
 class PointNet2_MP(Segmentation_MP):

@@ -166,15 +166,20 @@ class DenseRadiusNeighbourFinder(MultiscaleRadiusNeighbourFinder):
         return self.find_neighbours(x, y, scale_idx)
 
 
-class DenseKNNNeighbourFinder(KNNNeighbourFinder):
-    def __init__(self, k):
-        super().__init__(k)
+# class DenseKNNNeighbourFinder(KNNNeighbourFinder):
+#     def __init__(self, k):
+#         super().__init__(k)
 
-    def find_neighbours(self, x, y):
-        if x.shape[0] > 1:
-            raise NotImplementedError
+#     def find_neighbours(self, x, y):
+#         if x.shape[0] > 1:
+#             raise NotImplementedError
 
-        idx = knn(x[0], y[0])
+#         import pdb; pdb.set_trace()
+#         idx = knn(x[0], y[0], self.k)
+#         batch = torch.zeros((idx.shape[0],)).to(device=idx.device, dtype=idx.dtype).unsqueeze(1)
+#         idx = torch.cat([batch, idx])
+#         idx = idx.unsqueeze(0)
+#         return idx
 
-    def __call__(self, x, y):
-        self.find_neighbours(x, y)
+#     def __call__(self, x, y):
+#         return self.find_neighbours(x, y)
