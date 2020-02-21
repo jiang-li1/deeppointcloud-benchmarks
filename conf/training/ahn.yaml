@@ -11,10 +11,10 @@ training:
         params:
             momentum: 0.98
             weight_decay: 1e-3
-            lr: 0.1
+            lr: 0.01
     learning_rate:
         scheduler_type: "step_decay"
-        base_lr: 0.1
+        base_lr: 0.01
         lr_decay: 0.5
         decay_step: 200000
         lr_clip: 1e-5
