@@ -141,8 +141,8 @@ class AHNTracker(BaseTracker):
 
             metrics['{}_conf_matrix'.format(self._stage)] = pd.DataFrame(
                 confMat, 
-                [*self.labels, "FN (GT but not pred)", "FN Rate"], 
-                ['pred ' + l for l in self.labels] +  ['FP (pred but not GT)', 'FP Rate'])
+                [*self.labels, "FP (pred but not GT)", "FP Rate (TP/(TP+FP))"], 
+                ['pred ' + l for l in self.labels] +  ['FN (GT but not pred)', 'FN Rate (TP/(TP+FN))'])
 
             count = np.expand_dims(self._confusion_matrix.count_gt_per_class(), axis=0)
             prop = np.expand_dims(self._confusion_matrix.gt_proportion_per_class(), axis=0)

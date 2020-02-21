@@ -53,6 +53,8 @@ class AHNSubTileDataset(Dataset):
 
     num_subtiles = 16 #num_subtiles^0.5 must be an integer
 
+    clas_remap = [(3, 1), (4, 2)]
+
     def __init__(self, root, split, transform=None, pre_transform=None, pre_filter=None):
         self.split = split
         super().__init__(root, transform, pre_transform, pre_filter)
@@ -90,6 +92,10 @@ class AHNSubTileDataset(Dataset):
         print('wid: {} loading file:'.format(worker_info.id if worker_info else -1), self.processed_paths[idx])
         data = torch.load(self.processed_paths[idx])
         data.name = self.processed_file_names[idx].split('.')[0]
+
+        for fro, to in self.clas_remap:
+            data.y[data.y == fro] = to
+            
         return data
 
     def download(self):

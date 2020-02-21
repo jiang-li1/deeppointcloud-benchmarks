@@ -64,7 +64,7 @@ class RawAHNPointCloud(FilePointCloud):
 class AHNPointCloud(FilePointCloud):
 
     _clasNumToName = {
-        0 : "vegetation",
+        0 : "other",
         1 : "ground",
         2 : "building",
         3 : "water",
